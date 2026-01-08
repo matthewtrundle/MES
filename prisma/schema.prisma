@@ -1,0 +1,381 @@
+// MES MVP - Prisma Schema
+// Event-driven Manufacturing Execution System
+// Aligned with ISA-95 Level 3 concepts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================================
+// EVENTS TABLE (Source of Truth)
+// All critical operations emit immutable events
+// =============================================================================
+
+model Event {
+  id             String   @id @default(uuid())
+  timestampUtc   DateTime @default(now()) @map("timestamp_utc")
+  eventType      String   @map("event_type")
+  siteId         String   @map("site_id")
+  stationId      String?  @map("station_id")
+  workOrderId    String?  @map("work_order_id")
+  unitId         String?  @map("unit_id")
+  operatorId     String?  @map("operator_id")
+  payload        Json
+  source         String   // ui | edge | integration
+  idempotencyKey String?  @unique @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([eventType])
+  @@index([workOrderId])
+  @@index([unitId])
+  @@index([stationId, timestampUtc])
+  @@index([siteId, timestampUtc])
+  @@map("events")
+}
+
+// =============================================================================
+// CONFIGURATION ENTITIES (Admin-managed)
+// =============================================================================
+
+model Site {
+  id       String    @id @default(uuid())
+  name     String
+  timezone String    @default("UTC")
+  config   Json      @default("{}")
+  active   Boolean   @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stations        Station[]
+  workOrders      WorkOrder[]
+  downtimeReasons DowntimeReason[]
+  users           User[]           @relation("UserSites")
+
+  @@map("sites")
+}
+
+model Station {
+  id            String  @id @default(uuid())
+  siteId        String  @map("site_id")
+  name          String
+  stationType   String  @map("station_type") // winding | assembly | test | inspection
+  sequenceOrder Int     @map("sequence_order")
+  config        Json    @default("{}")
+  active        Boolean @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  site                 Site                      @relation(fields: [siteId], references: [id])
+  operations           WorkOrderOperation[]
+  unitExecutions       UnitOperationExecution[]
+  downtimeIntervals    DowntimeInterval[]
+  materialConsumptions UnitMaterialConsumption[]
+  ncrs                 NonconformanceRecord[]
+
+  @@index([siteId])
+  @@map("stations")
+}
+
+model DowntimeReason {
+  id          String  @id @default(uuid())
+  siteId      String  @map("site_id")
+  code        String
+  description String
+  lossType    String  @map("loss_type") // equipment | changeover | material | quality | planned | other
+  isPlanned   Boolean @default(false) @map("is_planned")
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  site              Site               @relation(fields: [siteId], references: [id])
+  downtimeIntervals DowntimeInterval[]
+
+  @@unique([siteId, code])
+  @@map("downtime_reasons")
+}
+
+model QualityCheckDefinition {
+  id         String   @id @default(uuid())
+  name       String
+  checkType  String   @map("check_type") // pass_fail | measurement | checklist
+  parameters Json     // Check-specific config (limits, options, etc.)
+  stationIds String[] @map("station_ids")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  results QualityCheckResult[]
+
+  @@map("quality_check_definitions")
+}
+
+model Routing {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  productCode String   @map("product_code")
+  operations  Json     // Array of { stationId, sequence, estimatedMinutes }
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workOrders WorkOrder[]
+
+  @@map("routings")
+}
+
+// =============================================================================
+// USER & RBAC
+// =============================================================================
+
+enum Role {
+  operator
+  supervisor
+  admin
+}
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique @map("clerk_id")
+  email     String   @unique
+  name      String
+  role      Role     @default(operator)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sites                Site[]                    @relation("UserSites")
+  unitExecutions       UnitOperationExecution[]
+  downtimeIntervals    DowntimeInterval[]
+  materialConsumptions UnitMaterialConsumption[]
+  qualityResults       QualityCheckResult[]
+  auditLogs            AuditLog[]
+
+  @@map("users")
+}
+
+// =============================================================================
+// EXECUTION ENTITIES
+// =============================================================================
+
+model WorkOrder {
+  id           String    @id @default(uuid())
+  siteId       String    @map("site_id")
+  routingId    String?   @map("routing_id")
+  orderNumber  String    @unique @map("order_number")
+  productCode  String    @map("product_code")
+  productName  String?   @map("product_name")
+  qtyOrdered   Int       @map("qty_ordered")
+  qtyCompleted Int       @default(0) @map("qty_completed")
+  qtyScrap     Int       @default(0) @map("qty_scrap")
+  status       String    @default("pending") // pending | released | in_progress | completed | cancelled
+  priority     Int       @default(0)
+  releasedAt   DateTime? @map("released_at")
+  completedAt  DateTime? @map("completed_at")
+  dueDate      DateTime? @map("due_date")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  site       Site                 @relation(fields: [siteId], references: [id])
+  routing    Routing?             @relation(fields: [routingId], references: [id])
+  units      Unit[]
+  operations WorkOrderOperation[]
+
+  @@index([siteId, status])
+  @@index([orderNumber])
+  @@map("work_orders")
+}
+
+model WorkOrderOperation {
+  id              String  @id @default(uuid())
+  workOrderId     String  @map("work_order_id")
+  stationId       String  @map("station_id")
+  sequence        Int
+  estimatedMinutes Int?   @map("estimated_minutes")
+  status          String  @default("pending") // pending | in_progress | completed
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  workOrder  WorkOrder                @relation(fields: [workOrderId], references: [id])
+  station    Station                  @relation(fields: [stationId], references: [id])
+  executions UnitOperationExecution[]
+
+  @@unique([workOrderId, sequence])
+  @@index([stationId])
+  @@map("work_order_operations")
+}
+
+model Unit {
+  id               String   @id @default(uuid())
+  workOrderId      String   @map("work_order_id")
+  serialNumber     String   @unique @map("serial_number")
+  status           String   @default("created") // created | in_progress | completed | scrapped | rework
+  currentStationId String?  @map("current_station_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  workOrder            WorkOrder                 @relation(fields: [workOrderId], references: [id])
+  executions           UnitOperationExecution[]
+  materialConsumptions UnitMaterialConsumption[]
+  qualityResults       QualityCheckResult[]
+  ncrs                 NonconformanceRecord[]
+
+  @@index([workOrderId])
+  @@index([status])
+  @@map("units")
+}
+
+model UnitOperationExecution {
+  id          String    @id @default(uuid())
+  unitId      String    @map("unit_id")
+  operationId String    @map("operation_id")
+  stationId   String    @map("station_id")
+  operatorId  String    @map("operator_id")
+  startedAt   DateTime  @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  result      String?   // pass | fail | rework
+  notes       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  unit      Unit               @relation(fields: [unitId], references: [id])
+  operation WorkOrderOperation @relation(fields: [operationId], references: [id])
+  station   Station            @relation(fields: [stationId], references: [id])
+  operator  User               @relation(fields: [operatorId], references: [id])
+
+  @@index([unitId])
+  @@index([stationId, startedAt])
+  @@map("unit_operation_executions")
+}
+
+// =============================================================================
+// TRACEABILITY (GS1-aligned)
+// =============================================================================
+
+model MaterialLot {
+  id           String   @id @default(uuid())
+  lotNumber    String   @unique @map("lot_number")
+  materialCode String   @map("material_code")
+  description  String?
+  qtyReceived  Float    @map("qty_received")
+  qtyRemaining Float    @map("qty_remaining")
+  receivedAt   DateTime @default(now()) @map("received_at")
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  consumptions UnitMaterialConsumption[]
+
+  @@index([materialCode])
+  @@map("material_lots")
+}
+
+model UnitMaterialConsumption {
+  id            String   @id @default(uuid())
+  unitId        String   @map("unit_id")
+  materialLotId String   @map("material_lot_id")
+  qtyConsumed   Float    @map("qty_consumed")
+  stationId     String   @map("station_id")
+  operatorId    String   @map("operator_id")
+  timestamp     DateTime @default(now())
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  unit        Unit        @relation(fields: [unitId], references: [id])
+  materialLot MaterialLot @relation(fields: [materialLotId], references: [id])
+  station     Station     @relation(fields: [stationId], references: [id])
+  operator    User        @relation(fields: [operatorId], references: [id])
+
+  @@index([unitId])
+  @@index([materialLotId])
+  @@map("unit_material_consumptions")
+}
+
+// =============================================================================
+// QUALITY & NCR
+// =============================================================================
+
+model QualityCheckResult {
+  id           String   @id @default(uuid())
+  unitId       String   @map("unit_id")
+  definitionId String   @map("definition_id")
+  operatorId   String   @map("operator_id")
+  result       String   // pass | fail
+  valuesJson   Json     @map("values_json") // Measurements, checkbox states, etc.
+  timestamp    DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  unit       Unit                   @relation(fields: [unitId], references: [id])
+  definition QualityCheckDefinition @relation(fields: [definitionId], references: [id])
+  operator   User                   @relation(fields: [operatorId], references: [id])
+
+  @@index([unitId])
+  @@map("quality_check_results")
+}
+
+model NonconformanceRecord {
+  id          String    @id @default(uuid())
+  unitId      String    @map("unit_id")
+  stationId   String    @map("station_id")
+  defectType  String    @map("defect_type")
+  description String?
+  disposition String?   // rework | scrap | use_as_is | defer
+  status      String    @default("open") // open | dispositioned | closed
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  closedAt    DateTime? @map("closed_at")
+
+  unit    Unit    @relation(fields: [unitId], references: [id])
+  station Station @relation(fields: [stationId], references: [id])
+
+  @@index([unitId])
+  @@index([status])
+  @@map("nonconformance_records")
+}
+
+// =============================================================================
+// DOWNTIME
+// =============================================================================
+
+model DowntimeInterval {
+  id         String    @id @default(uuid())
+  stationId  String    @map("station_id")
+  reasonId   String?   @map("reason_id")
+  operatorId String    @map("operator_id")
+  startedAt  DateTime  @map("started_at")
+  endedAt    DateTime? @map("ended_at")
+  notes      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  station  Station         @relation(fields: [stationId], references: [id])
+  reason   DowntimeReason? @relation(fields: [reasonId], references: [id])
+  operator User            @relation(fields: [operatorId], references: [id])
+
+  @@index([stationId, startedAt])
+  @@map("downtime_intervals")
+}
+
+// =============================================================================
+// AUDIT LOG
+// =============================================================================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  action     String   // create | update | delete | config_change
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  beforeJson Json?    @map("before_json")
+  afterJson  Json?    @map("after_json")
+  timestamp  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId, timestamp])
+  @@map("audit_logs")
+}
