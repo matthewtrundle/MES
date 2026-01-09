@@ -12,9 +12,12 @@ const prisma = new PrismaClient({ adapter });
 const FIXED_IDS = {
   site: '11111111-1111-1111-1111-111111111111',
   stations: {
-    winding: '22222222-1111-1111-1111-111111111111',
-    assembly: '22222222-2222-2222-2222-222222222222',
-    test: '22222222-3333-3333-3333-333333333333',
+    a_winding: '22222222-1111-1111-1111-111111111111',
+    b_magnet: '22222222-2222-2222-2222-222222222222',
+    c_housing: '22222222-3333-3333-3333-333333333333',
+    d_inspection: '22222222-4444-4444-4444-444444444444',
+    e_electrical: '22222222-5555-5555-5555-555555555555',
+    f_final: '22222222-6666-6666-6666-666666666666',
   },
   users: {
     admin: '33333333-1111-1111-1111-111111111111',
@@ -63,11 +66,11 @@ async function main() {
     },
   });
 
-  // Create Stations
+  // Create Stations (6-station motor assembly line)
   console.log('Creating stations...');
   const stationA = await prisma.station.create({
     data: {
-      id: FIXED_IDS.stations.winding,
+      id: FIXED_IDS.stations.a_winding,
       name: 'Station A - Winding',
       stationType: 'winding',
       sequenceOrder: 1,
@@ -78,7 +81,7 @@ async function main() {
 
   const stationB = await prisma.station.create({
     data: {
-      id: FIXED_IDS.stations.assembly,
+      id: FIXED_IDS.stations.b_magnet,
       name: 'Station B - Magnet Install',
       stationType: 'assembly',
       sequenceOrder: 2,
@@ -89,16 +92,49 @@ async function main() {
 
   const stationC = await prisma.station.create({
     data: {
-      id: FIXED_IDS.stations.test,
-      name: 'Station C - Final Test',
-      stationType: 'test',
+      id: FIXED_IDS.stations.c_housing,
+      name: 'Station C - Housing Assembly',
+      stationType: 'assembly',
       sequenceOrder: 3,
       siteId: site.id,
       config: {},
     },
   });
 
-  const stations = [stationA, stationB, stationC];
+  const stationD = await prisma.station.create({
+    data: {
+      id: FIXED_IDS.stations.d_inspection,
+      name: 'Station D - Quality Inspection',
+      stationType: 'inspection',
+      sequenceOrder: 4,
+      siteId: site.id,
+      config: {},
+    },
+  });
+
+  const stationE = await prisma.station.create({
+    data: {
+      id: FIXED_IDS.stations.e_electrical,
+      name: 'Station E - Electrical Test',
+      stationType: 'test',
+      sequenceOrder: 5,
+      siteId: site.id,
+      config: {},
+    },
+  });
+
+  const stationF = await prisma.station.create({
+    data: {
+      id: FIXED_IDS.stations.f_final,
+      name: 'Station F - Final Test',
+      stationType: 'test',
+      sequenceOrder: 6,
+      siteId: site.id,
+      config: {},
+    },
+  });
+
+  const stations = [stationA, stationB, stationC, stationD, stationE, stationF];
 
   // Create Downtime Reasons
   console.log('Creating downtime reasons...');
@@ -173,7 +209,53 @@ async function main() {
         parameters: {
           criteria: ['No visible defects', 'Proper alignment', 'Clean surface'],
         },
-        stationIds: [stationA.id, stationB.id],
+        stationIds: [stationA.id, stationB.id, stationC.id],
+      },
+    }),
+    prisma.qualityCheckDefinition.create({
+      data: {
+        name: 'Housing Torque Check',
+        checkType: 'measurement',
+        parameters: {
+          unit: 'Nm',
+          minValue: 2.5,
+          maxValue: 3.5,
+          nominal: 3.0,
+        },
+        stationIds: [stationC.id],
+      },
+    }),
+    prisma.qualityCheckDefinition.create({
+      data: {
+        name: 'Full Quality Inspection',
+        checkType: 'pass_fail',
+        parameters: {
+          criteria: ['Assembly complete', 'No gaps or misalignment', 'Labels applied', 'Cleanliness verified'],
+        },
+        stationIds: [stationD.id],
+      },
+    }),
+    prisma.qualityCheckDefinition.create({
+      data: {
+        name: 'Electrical Test - Continuity',
+        checkType: 'pass_fail',
+        parameters: {
+          criteria: ['Phase A continuity', 'Phase B continuity', 'Phase C continuity', 'No shorts to ground'],
+        },
+        stationIds: [stationE.id],
+      },
+    }),
+    prisma.qualityCheckDefinition.create({
+      data: {
+        name: 'Electrical Test - Insulation',
+        checkType: 'measurement',
+        parameters: {
+          unit: 'MΩ',
+          minValue: 100,
+          maxValue: 1000,
+          nominal: 500,
+        },
+        stationIds: [stationE.id],
       },
     }),
     prisma.qualityCheckDefinition.create({
@@ -186,7 +268,7 @@ async function main() {
           maxValue: 3200,
           nominal: 3000,
         },
-        stationIds: [stationC.id],
+        stationIds: [stationF.id],
       },
     }),
     prisma.qualityCheckDefinition.create({
@@ -199,7 +281,7 @@ async function main() {
           maxValue: 2.2,
           nominal: 2.0,
         },
-        stationIds: [stationC.id],
+        stationIds: [stationF.id],
       },
     }),
   ]);
@@ -210,12 +292,15 @@ async function main() {
     data: {
       id: FIXED_IDS.routing,
       name: 'Standard Motor Assembly',
-      description: 'Standard 3-station motor assembly process',
+      description: 'Standard 6-station motor assembly process',
       productCode: 'MOTOR-STD-001',
       operations: [
         { stationId: stationA.id, sequence: 1, estimatedMinutes: 15 },
         { stationId: stationB.id, sequence: 2, estimatedMinutes: 10 },
-        { stationId: stationC.id, sequence: 3, estimatedMinutes: 5 },
+        { stationId: stationC.id, sequence: 3, estimatedMinutes: 12 },
+        { stationId: stationD.id, sequence: 4, estimatedMinutes: 8 },
+        { stationId: stationE.id, sequence: 5, estimatedMinutes: 6 },
+        { stationId: stationF.id, sequence: 6, estimatedMinutes: 5 },
       ],
     },
   });
@@ -349,6 +434,33 @@ async function main() {
         workOrderId: workOrder.id,
         stationId: stationC.id,
         sequence: 3,
+        estimatedMinutes: 12,
+        status: 'pending',
+      },
+    }),
+    prisma.workOrderOperation.create({
+      data: {
+        workOrderId: workOrder.id,
+        stationId: stationD.id,
+        sequence: 4,
+        estimatedMinutes: 8,
+        status: 'pending',
+      },
+    }),
+    prisma.workOrderOperation.create({
+      data: {
+        workOrderId: workOrder.id,
+        stationId: stationE.id,
+        sequence: 5,
+        estimatedMinutes: 6,
+        status: 'pending',
+      },
+    }),
+    prisma.workOrderOperation.create({
+      data: {
+        workOrderId: workOrder.id,
+        stationId: stationF.id,
+        sequence: 6,
         estimatedMinutes: 5,
         status: 'pending',
       },

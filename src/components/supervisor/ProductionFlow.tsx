@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Icons, StatusIndicator, StationStatusBadge } from '@/components/icons';
 
 interface StationData {
@@ -13,6 +14,21 @@ interface StationData {
   currentUnit?: string;
   cycleTime?: number;
   estimatedTime?: number;
+  lastActivity?: Date | null;
+}
+
+function formatTimeAgo(date: Date | null | undefined): string {
+  if (!date) return 'No activity';
+  const now = new Date();
+  const diffMs = now.getTime() - new Date(date).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
 }
 
 interface ProductionFlowProps {
@@ -57,14 +73,15 @@ export function ProductionFlow({ stations, className = '' }: ProductionFlowProps
         <div className="flex items-stretch gap-2">
           {sortedStations.map((station, index) => (
             <div key={station.id} className="flex flex-1 items-center">
-              {/* Station Card */}
-              <div
-                className={`relative flex-1 rounded-lg border-2 p-4 transition-all ${
+              {/* Station Card - Clickable */}
+              <Link
+                href={`/dashboard/station/${station.id}`}
+                className={`relative flex-1 rounded-lg border-2 p-4 transition-all cursor-pointer hover:shadow-lg hover:scale-[1.02] ${
                   station.isDowntime
-                    ? 'border-amber-400 bg-amber-50'
+                    ? 'border-amber-400 bg-amber-50 hover:border-amber-500'
                     : station.wipCount > 0
-                      ? 'border-green-400 bg-green-50'
-                      : 'border-gray-200 bg-gray-50'
+                      ? 'border-green-400 bg-green-50 hover:border-green-500'
+                      : 'border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50'
                 }`}
               >
                 {/* Status indicator */}
@@ -91,9 +108,15 @@ export function ProductionFlow({ stations, className = '' }: ProductionFlowProps
                 </div>
 
                 {/* Station type icon */}
-                <div className="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                <div className="mb-2 flex items-center gap-2 text-sm text-gray-600">
                   <StationTypeIcon type={station.stationType} />
                   <span className="capitalize">{station.stationType}</span>
+                </div>
+
+                {/* Last Activity */}
+                <div className="mb-3 flex items-center gap-1.5 text-xs text-gray-500">
+                  <Icons.clock className="h-3 w-3" />
+                  <span>{formatTimeAgo(station.lastActivity)}</span>
                 </div>
 
                 {/* WIP Count */}
@@ -103,8 +126,10 @@ export function ProductionFlow({ stations, className = '' }: ProductionFlowProps
                     <span className="text-2xl font-bold text-gray-900">{station.wipCount}</span>
                   </div>
 
-                  {station.isDowntime && (
+                  {station.isDowntime ? (
                     <StationStatusBadge status="downtime" />
+                  ) : (
+                    <Icons.chevronRight className="h-5 w-5 text-gray-400" />
                   )}
                 </div>
 
@@ -134,7 +159,7 @@ export function ProductionFlow({ stations, className = '' }: ProductionFlowProps
                     )}
                   </div>
                 )}
-              </div>
+              </Link>
 
               {/* Arrow between stations */}
               {index < sortedStations.length - 1 && (

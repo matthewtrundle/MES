@@ -4,6 +4,7 @@ import { Icons, UnitStatusBadge } from '@/components/icons';
 import { KPICard, KPIGrid } from '@/components/supervisor/KPICard';
 import { ProductionFlow } from '@/components/supervisor/ProductionFlow';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
+import { SimulationControl } from '@/components/supervisor/SimulationControl';
 
 async function getDashboardData() {
   const today = new Date();
@@ -119,6 +120,21 @@ async function getDashboardData() {
 
   const downtimeStationIds = new Set(activeDowntime.map((d) => d.stationId));
 
+  // Get last activity per station from events
+  const lastEventsPerStation = await prisma.event.groupBy({
+    by: ['stationId'],
+    where: {
+      stationId: { not: null },
+    },
+    _max: {
+      createdAt: true,
+    },
+  });
+
+  const lastActivityMap = new Map(
+    lastEventsPerStation.map((e) => [e.stationId, e._max.createdAt])
+  );
+
   const stationsWithData = stations.map((station) => ({
     id: station.id,
     name: station.name,
@@ -129,6 +145,7 @@ async function getDashboardData() {
     currentUnit: unitAtStation.get(station.id)?.serial,
     cycleTime: unitAtStation.get(station.id)?.cycleTime,
     estimatedTime: unitAtStation.get(station.id)?.estimatedTime,
+    lastActivity: lastActivityMap.get(station.id) ?? null,
   }));
 
   const totalWIP = stationsWithData.reduce((sum, s) => sum + s.wipCount, 0);
@@ -167,6 +184,10 @@ export default async function DashboardPage() {
               </div>
             </div>
             <AutoRefresh intervalSeconds={30} />
+          </div>
+          {/* Simulation Controls */}
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <SimulationControl />
           </div>
         </div>
       </header>
@@ -215,7 +236,7 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* KPI Grid */}
+        {/* KPI Grid - All cards are clickable for drill-down */}
         <KPIGrid columns={4} className="mb-6">
           <KPICard
             title="Units Completed Today"
@@ -223,12 +244,14 @@ export default async function DashboardPage() {
             icon="pass"
             status="success"
             subtitle="Target: 10"
+            href="/dashboard/production"
           />
           <KPICard
             title="Work in Progress"
             value={data.totalWIP}
             icon="unit"
             status="normal"
+            href="/dashboard/wip"
           />
           <KPICard
             title="Open NCRs"
@@ -236,6 +259,7 @@ export default async function DashboardPage() {
             icon="qualityFail"
             status={data.openNCRs > 0 ? 'critical' : 'normal'}
             subtitle={data.openNCRs > 0 ? 'Action required' : 'None'}
+            href="/dashboard/ncr"
           />
           <KPICard
             title="Quality Rate"
@@ -243,6 +267,7 @@ export default async function DashboardPage() {
             icon="gauge"
             status={data.qualityRate < 95 ? 'warning' : 'success'}
             subtitle={`${data.passCount} pass / ${data.failCount} fail`}
+            href="/dashboard/quality"
           />
         </KPIGrid>
 
@@ -266,22 +291,34 @@ export default async function DashboardPage() {
               </Link>
             </div>
             <div className="divide-y divide-gray-100">
-              {data.recentUnits.map((unit) => (
-                <div
-                  key={unit.id}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
-                >
-                  <div>
-                    <p className="font-mono font-medium text-gray-900">
-                      {unit.serialNumber}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {unit.workOrder.productCode}
-                    </p>
-                  </div>
-                  <UnitStatusBadge status={unit.status as 'created' | 'in_progress' | 'completed' | 'scrapped' | 'rework'} />
+              {data.recentUnits.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <Icons.unit className="mx-auto h-8 w-8 text-gray-300" />
+                  <p className="mt-2 text-sm text-gray-500">
+                    No units in progress
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Release a work order to begin production
+                  </p>
                 </div>
-              ))}
+              ) : (
+                data.recentUnits.map((unit) => (
+                  <div
+                    key={unit.id}
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+                  >
+                    <div>
+                      <p className="font-mono font-medium text-gray-900">
+                        {unit.serialNumber}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {unit.workOrder.productCode}
+                      </p>
+                    </div>
+                    <UnitStatusBadge status={unit.status as 'created' | 'in_progress' | 'completed' | 'scrapped' | 'rework'} />
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -290,6 +327,12 @@ export default async function DashboardPage() {
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <h3 className="mb-4 font-semibold text-gray-900">Quick Access</h3>
               <div className="grid grid-cols-2 gap-3">
+                <NavCard
+                  href="/dashboard/oee"
+                  icon="gauge"
+                  title="OEE Dashboard"
+                  description="Effectiveness metrics"
+                />
                 <NavCard
                   href="/dashboard/wip"
                   icon="chart"
@@ -314,12 +357,36 @@ export default async function DashboardPage() {
                   title="NCR Queue"
                   description={`${data.openNCRs} pending`}
                 />
+                <NavCard
+                  href="/dashboard/events"
+                  icon="stream"
+                  title="Event Stream"
+                  description="Live activity feed"
+                />
+                <NavCard
+                  href="/dashboard/inventory"
+                  icon="inventory"
+                  title="Inventory"
+                  description="Material tracking"
+                />
+                <NavCard
+                  href="/dashboard/analytics"
+                  icon="chart"
+                  title="Pareto Analysis"
+                  description="80/20 root cause"
+                />
+                <NavCard
+                  href="/dashboard/shift-report"
+                  icon="clock"
+                  title="Shift Report"
+                  description="Handoff summary"
+                />
               </div>
             </div>
 
             {/* Summary Stats */}
             <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <h3 className="mb-3 font-semibold text-gray-900">Today's Summary</h3>
+              <h3 className="mb-3 font-semibold text-gray-900">Shift Summary (Today)</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -368,7 +435,7 @@ function NavCard({
   description,
 }: {
   href: string;
-  icon: 'chart' | 'clock' | 'search' | 'warning';
+  icon: 'chart' | 'clock' | 'search' | 'warning' | 'gauge' | 'stream' | 'inventory';
   title: string;
   description: string;
 }) {
@@ -377,6 +444,9 @@ function NavCard({
     clock: Icons.clock,
     search: Icons.search,
     warning: Icons.warning,
+    gauge: Icons.gauge,
+    stream: Icons.clock,
+    inventory: Icons.chart,
   };
   const Icon = iconMap[icon];
 

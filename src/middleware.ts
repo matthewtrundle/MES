@@ -6,26 +6,9 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/health(.*)',
+  '/api/ready(.*)',
   '/api/webhook(.*)', // For ERP integration webhooks
-]);
-
-// Routes that require specific roles
-const isOperatorRoute = createRouteMatcher([
-  '/station(.*)',
-  '/operator(.*)',
-]);
-
-const isSupervisorRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/supervisor(.*)',
-  '/wip(.*)',
-  '/throughput(.*)',
-  '/downtime(.*)',
-  '/traceability(.*)',
-]);
-
-const isAdminRoute = createRouteMatcher([
-  '/admin(.*)',
+  '/', // Landing page
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
@@ -35,7 +18,7 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // Require authentication for all other routes
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
 
   if (!userId) {
     // Redirect to sign-in if not authenticated
@@ -44,26 +27,8 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  // Get role from session claims (set via Clerk metadata)
-  const metadata = sessionClaims?.metadata as { role?: string } | undefined;
-  const role = metadata?.role;
-
-  // Check route-specific role requirements
-  if (isAdminRoute(request)) {
-    if (role !== 'admin') {
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
-    }
-  }
-
-  if (isSupervisorRoute(request)) {
-    if (!['supervisor', 'admin'].includes(role ?? '')) {
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
-    }
-  }
-
-  // Operator routes are accessible by all authenticated users
-  // (operators, supervisors, and admins)
-
+  // Authentication passed - allow access
+  // Role-based authorization is handled at the page/action level via RBAC
   return NextResponse.next();
 });
 

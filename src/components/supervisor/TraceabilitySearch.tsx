@@ -5,15 +5,62 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { searchUnitBySerial, getUnitWithHistory } from '@/lib/actions/units';
 import { searchMaterialLot } from '@/lib/actions/materials';
+import { TraceabilityGraph } from './TraceabilityGraph';
 
 type SearchResult = {
   type: 'unit' | 'lot';
   data: unknown;
 } | null;
 
+// Type for the graph component
+type UnitDataForGraph = {
+  id: string;
+  serialNumber: string;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  workOrder: {
+    orderNumber: string;
+    productCode: string;
+  };
+  executions: Array<{
+    id: string;
+    startedAt: string;
+    completedAt: string | null;
+    result: string | null;
+    operation: { sequence: number };
+    station: { name: string };
+    operator: { name: string };
+  }>;
+  qualityChecks: Array<{
+    id: string;
+    timestamp: string;
+    result: string;
+    definition: { name: string; checkType: string };
+    operator: { name: string };
+  }>;
+  materialConsumptions: Array<{
+    id: string;
+    timestamp: string;
+    qtyConsumed: number;
+    materialLot: { lotNumber: string; materialCode: string };
+    station: { name: string };
+    operator: { name: string };
+  }>;
+  ncrs: Array<{
+    id: string;
+    createdAt: string;
+    defectType: string;
+    status: string;
+    disposition: string | null;
+    station: { name: string };
+  }>;
+};
+
 export function TraceabilitySearch() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'serial' | 'lot'>('serial');
+  const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<SearchResult>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,11 +139,43 @@ export function TraceabilitySearch() {
               {error}
             </div>
           )}
+
+          {/* View Mode Toggle (only for unit results) */}
+          {result?.type === 'unit' && (
+            <div className="mt-4 flex items-center gap-2">
+              <span className="text-sm text-gray-500">View:</span>
+              <div className="flex rounded-lg border border-gray-200 p-1">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  📋 List View
+                </button>
+                <button
+                  onClick={() => setViewMode('graph')}
+                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                    viewMode === 'graph'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  🔗 Graph View
+                </button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Results */}
-      {result?.type === 'unit' && <UnitResult data={result.data} />}
+      {result?.type === 'unit' && viewMode === 'graph' && (
+        <TraceabilityGraph data={result.data as UnitDataForGraph} />
+      )}
+      {result?.type === 'unit' && viewMode === 'list' && <UnitResult data={result.data} />}
       {result?.type === 'lot' && <LotResult data={result.data} />}
     </div>
   );

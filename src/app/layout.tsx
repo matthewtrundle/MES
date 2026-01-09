@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { ClerkProvider } from '@clerk/nextjs';
+import { ClerkProvider, UserButton, SignedIn } from '@clerk/nextjs';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
@@ -30,6 +30,18 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
         >
+          <SignedIn>
+            <div className="fixed top-4 right-4 z-50">
+              <UserButton
+                afterSignOutUrl="/sign-in"
+                appearance={{
+                  elements: {
+                    avatarBox: "w-10 h-10"
+                  }
+                }}
+              />
+            </div>
+          </SignedIn>
           {children}
           <Toaster position="top-right" />
         </body>

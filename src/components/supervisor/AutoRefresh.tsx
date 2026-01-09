@@ -23,12 +23,15 @@ export function AutoRefresh({
 
   const refresh = useCallback(() => {
     setIsRefreshing(true);
-    router.refresh();
     setLastUpdate(new Date());
+    // Use startTransition or setTimeout to avoid calling router.refresh during render
     setTimeout(() => {
-      setIsRefreshing(false);
-      setCountdown(intervalSeconds);
-    }, 500);
+      router.refresh();
+      setTimeout(() => {
+        setIsRefreshing(false);
+        setCountdown(intervalSeconds);
+      }, 500);
+    }, 0);
   }, [router, intervalSeconds]);
 
   useEffect(() => {
@@ -37,7 +40,8 @@ export function AutoRefresh({
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          refresh();
+          // Schedule refresh outside of setState to avoid update-during-render
+          setTimeout(() => refresh(), 0);
           return intervalSeconds;
         }
         return prev - 1;
@@ -53,7 +57,7 @@ export function AutoRefresh({
     <div className={`flex items-center gap-3 ${className}`}>
       {/* Last update time */}
       <span className="text-xs text-gray-500">
-        Updated {lastUpdate.toLocaleTimeString()}
+        Last data update: {lastUpdate.toLocaleTimeString()}
       </span>
 
       {/* Refresh button and countdown */}
@@ -113,8 +117,11 @@ export function useAutoRefresh(intervalSeconds: number = 30) {
 
   const refresh = useCallback(() => {
     setIsRefreshing(true);
-    router.refresh();
-    setTimeout(() => setIsRefreshing(false), 500);
+    // Defer router.refresh to avoid update-during-render issues
+    setTimeout(() => {
+      router.refresh();
+      setTimeout(() => setIsRefreshing(false), 500);
+    }, 0);
   }, [router]);
 
   useEffect(() => {

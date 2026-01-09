@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Icons, type IconName } from '@/components/icons';
 import type { LucideIcon } from 'lucide-react';
 
@@ -14,6 +15,7 @@ interface KPICardProps {
   };
   status?: 'normal' | 'warning' | 'critical' | 'success';
   className?: string;
+  href?: string;
 }
 
 export function KPICard({
@@ -24,6 +26,7 @@ export function KPICard({
   trend,
   status = 'normal',
   className = '',
+  href,
 }: KPICardProps) {
   const Icon = Icons[icon] as LucideIcon;
 
@@ -56,10 +59,7 @@ export function KPICard({
 
   const styles = statusStyles[status];
 
-  return (
-    <div
-      className={`rounded-lg border bg-white p-4 ${styles.border} ${className}`}
-    >
+  const cardContent = (
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-500">{title}</p>
@@ -90,10 +90,31 @@ export function KPICard({
             <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
           )}
         </div>
-        <div className={`rounded-lg p-2 ${styles.iconBg}`}>
-          <Icon className={`h-6 w-6 ${styles.iconColor}`} />
+        <div className="flex items-center gap-2">
+          <div className={`rounded-lg p-2 ${styles.iconBg}`}>
+            <Icon className={`h-6 w-6 ${styles.iconColor}`} />
+          </div>
+          {href && <Icons.chevronRight className="h-5 w-5 text-gray-400" />}
         </div>
       </div>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`block rounded-lg border bg-white p-4 transition-all hover:shadow-lg hover:scale-[1.02] ${styles.border} ${className}`}
+      >
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className={`rounded-lg border bg-white p-4 ${styles.border} ${className}`}
+    >
+      {cardContent}
     </div>
   );
 }

@@ -22,8 +22,9 @@ const prisma = new PrismaClient({ adapter });
 // ============================================================================
 // DETERMINISTIC SIMULATION - Same results every run
 // ============================================================================
-// Use a fixed date for reproducible demo results
-const SIMULATION_START = new Date('2024-01-15T06:00:00Z'); // Fixed date: 6 AM Jan 15, 2024
+// Use today's date for live demo, starting 4 hours ago
+const now = new Date();
+const SIMULATION_START = new Date(now.getTime() - 4 * 60 * 60 * 1000); // 4 hours ago
 
 // Seeded random number generator for deterministic "randomness"
 function createSeededRandom(seed: number) {
@@ -57,7 +58,7 @@ async function simulate() {
   if (!site) throw new Error('Run seed first: npx prisma db seed');
 
   const stations = await prisma.station.findMany({ orderBy: { sequenceOrder: 'asc' } });
-  const [stationA, stationB, stationC] = stations;
+  const [stationA, stationB, stationC, stationD, stationE, stationF] = stations;
 
   const workOrder = await prisma.workOrder.findFirst({ where: { orderNumber: 'WO-1001' } });
   if (!workOrder) throw new Error('Work order not found');
@@ -84,7 +85,7 @@ async function simulate() {
 
   console.log('📊 Scenario Overview:');
   console.log('   - 5 units to produce');
-  console.log('   - 3 stations: Winding → Magnet Install → Final Test');
+  console.log('   - 6 stations: Winding → Magnet → Housing → Inspection → Electrical → Final Test');
   console.log('   - Includes: downtime, quality failure, rework');
   console.log('');
   console.log('🎬 Starting Simulation...');
@@ -709,7 +710,7 @@ async function simulate() {
     const unit = units[i];
     let currentTime = 300 + (i - 3) * 40;
 
-    for (const station of [stationA, stationB, stationC]) {
+    for (const station of stations) {
       const opIndex = station.sequenceOrder - 1;
 
       await prisma.unit.update({

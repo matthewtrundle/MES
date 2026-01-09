@@ -29,6 +29,7 @@ import {
   ArrowRight,
   ArrowDown,
   ChevronRight,
+  ChevronLeft,
   Search,
   RefreshCw,
   Zap,
@@ -81,6 +82,7 @@ export const Icons = {
   arrowRight: ArrowRight,
   arrowDown: ArrowDown,
   chevronRight: ChevronRight,
+  chevronLeft: ChevronLeft,
 
   // Action icons
   search: Search,
