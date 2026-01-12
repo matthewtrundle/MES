@@ -52,10 +52,31 @@ async function simulate() {
   if (!site) throw new Error('Run seed first: npx prisma db seed');
 
   const stations = await prisma.station.findMany({ orderBy: { sequenceOrder: 'asc' } });
-  const workOrder = await prisma.workOrder.findFirst({
-    where: { status: { in: ['released', 'in_progress'] } }
+
+  // Find work orders with remaining capacity (qtyCompleted < qtyOrdered)
+  const availableWorkOrders = await prisma.workOrder.findMany({
+    where: {
+      status: { in: ['released', 'in_progress'] },
+    },
+    orderBy: { createdAt: 'desc' }, // Prefer newer work orders
   });
-  if (!workOrder) throw new Error('No active work order found');
+
+  // Filter to work orders that still have units to produce
+  const workOrdersWithCapacity = availableWorkOrders.filter(wo => wo.qtyCompleted < wo.qtyOrdered);
+
+  // Mark fully completed work orders as 'completed'
+  for (const wo of availableWorkOrders) {
+    if (wo.qtyCompleted >= wo.qtyOrdered && wo.status !== 'completed') {
+      await prisma.workOrder.update({
+        where: { id: wo.id },
+        data: { status: 'completed' },
+      });
+      log(`📋 AUTO-COMPLETE: Work order ${wo.orderNumber} marked as completed (${wo.qtyCompleted}/${wo.qtyOrdered})`);
+    }
+  }
+
+  const workOrder = workOrdersWithCapacity[0];
+  if (!workOrder) throw new Error('No active work order with remaining capacity found. Create and release a new work order.');
 
   const operations = await prisma.workOrderOperation.findMany({
     where: { workOrderId: workOrder.id },
@@ -66,12 +87,17 @@ async function simulate() {
   const downtimeReasons = await prisma.downtimeReason.findMany();
   const qualityChecks = await prisma.qualityCheckDefinition.findMany();
 
-  // Get existing unit count for serial numbering
-  const existingUnits = await prisma.unit.count({ where: { workOrderId: workOrder.id } });
-  unitCounter = existingUnits + 1;
+  // Get existing unit count for serial numbering (global, not per work order)
+  const allUnitsCount = await prisma.unit.count();
+  unitCounter = allUnitsCount + 1;
+
+  // Track units created for this specific work order
+  const workOrderUnitsCount = await prisma.unit.count({ where: { workOrderId: workOrder.id } });
+  let workOrderUnitsCreated = workOrderUnitsCount;
 
   log('🟢 Simulation started - creating live production activity');
   log(`📋 Work Order: ${workOrder.orderNumber} (${workOrder.qtyCompleted}/${workOrder.qtyOrdered} completed)`);
+  log(`📊 Starting serial: MTR-${String(unitCounter).padStart(5, '0')}, WO units: ${workOrderUnitsCreated}/${workOrder.qtyOrdered}`);
   console.log('');
 
   // Track active units in progress
@@ -80,8 +106,8 @@ async function simulate() {
   while (running) {
     const action = Math.random();
 
-    // 40% chance: Create new unit (if capacity allows)
-    if (action < 0.4 && activeUnits.length < 3 && unitCounter <= workOrder.qtyOrdered) {
+    // 40% chance: Create new unit (if capacity allows for this work order)
+    if (action < 0.4 && activeUnits.length < 3 && workOrderUnitsCreated < workOrder.qtyOrdered) {
       const serial = `MTR-${String(unitCounter).padStart(5, '0')}`;
       const operator = await getRandomElement(operators);
 
@@ -119,8 +145,9 @@ async function simulate() {
 
       activeUnits.push({ id: unit.id, serial, stationIndex: 0 });
       unitCounter++;
+      workOrderUnitsCreated++;
 
-      log(`📦 NEW UNIT: ${serial} started at ${stations[0].name}`);
+      log(`📦 NEW UNIT: ${serial} started at ${stations[0].name} (${workOrderUnitsCreated}/${workOrder.qtyOrdered})`);
     }
 
     // 50% chance: Advance a unit to next station
@@ -197,10 +224,19 @@ async function simulate() {
             data: { status: 'completed', currentStationId: null },
           });
 
-          await prisma.workOrder.update({
+          const updatedWO = await prisma.workOrder.update({
             where: { id: workOrder.id },
             data: { qtyCompleted: { increment: 1 } },
           });
+
+          // Check if work order is now complete
+          if (updatedWO.qtyCompleted >= updatedWO.qtyOrdered) {
+            await prisma.workOrder.update({
+              where: { id: workOrder.id },
+              data: { status: 'completed' },
+            });
+            log(`🎉 WORK ORDER COMPLETE: ${workOrder.orderNumber} - all ${updatedWO.qtyOrdered} units finished!`);
+          }
 
           // Record quality check pass
           if (qualityChecks.length > 0) {
@@ -222,63 +258,10 @@ async function simulate() {
       }
     }
 
-    // 10% chance: Trigger downtime event
-    else if (activeUnits.length > 0 && downtimeReasons.length > 0) {
-      const station = await getRandomElement(stations);
-      const reason = await getRandomElement(downtimeReasons);
-      const operator = await getRandomElement(operators);
+    // Downtime is now triggered manually via UI button (removed from auto-simulation)
 
-      // Check if station already has active downtime
-      const existingDowntime = await prisma.downtimeInterval.findFirst({
-        where: { stationId: station.id, endedAt: null },
-      });
-
-      if (!existingDowntime) {
-        const downtime = await prisma.downtimeInterval.create({
-          data: {
-            stationId: station.id,
-            operatorId: operator.id,
-            reasonId: reason.id,
-            startedAt: new Date(),
-          },
-        });
-
-        await prisma.event.create({
-          data: {
-            eventType: 'downtime_started',
-            siteId: site.id,
-            stationId: station.id,
-            operatorId: operator.id,
-            payload: { reason: reason.description },
-            source: 'ui',
-          },
-        });
-
-        log(`⚠️  DOWNTIME: ${station.name} - ${reason.description}`);
-
-        // End downtime after 10-30 seconds
-        setTimeout(async () => {
-          await prisma.downtimeInterval.update({
-            where: { id: downtime.id },
-            data: { endedAt: new Date() },
-          });
-          await prisma.event.create({
-            data: {
-              eventType: 'downtime_ended',
-              siteId: site.id,
-              stationId: station.id,
-              operatorId: operator.id,
-              payload: { reason: reason.description },
-              source: 'ui',
-            },
-          });
-          log(`🟢 RESUMED: ${station.name} back online`);
-        }, 10000 + Math.random() * 20000);
-      }
-    }
-
-    // Wait 5-15 seconds before next action
-    const waitTime = 5000 + Math.random() * 10000;
+    // Wait 3-8 seconds before next action (faster without downtime interruptions)
+    const waitTime = 3000 + Math.random() * 5000;
     await sleep(waitTime);
   }
 

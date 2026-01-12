@@ -11,17 +11,33 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    // Get speed parameter (run multiple ticks at once for faster simulation)
+    const { searchParams } = new URL(request.url);
+    const speed = Math.min(parseInt(searchParams.get('speed') || '1', 10), 5);
+
     const site = await prisma.site.findFirst();
     if (!site) {
       return NextResponse.json({ error: 'No site found' }, { status: 400 });
     }
 
     const stations = await prisma.station.findMany({ orderBy: { sequenceOrder: 'asc' } });
-    const workOrder = await prisma.workOrder.findFirst({
-      where: { status: { in: ['released', 'in_progress'] } },
+
+    // Get stations with active downtime - these should block production
+    const activeDowntimes = await prisma.downtimeInterval.findMany({
+      where: { endedAt: null },
+      select: { stationId: true },
     });
+    const downtimeStationIds = new Set(activeDowntimes.map(d => d.stationId));
+
+    // Find work order with remaining capacity
+    const availableWorkOrders = await prisma.workOrder.findMany({
+      where: { status: { in: ['released', 'in_progress'] } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const workOrder = availableWorkOrders.find(wo => wo.qtyCompleted < wo.qtyOrdered) || availableWorkOrders[0];
 
     if (!workOrder) {
       return NextResponse.json({ error: 'No active work order' }, { status: 400 });
@@ -41,6 +57,33 @@ export async function POST() {
       include: { executions: { where: { completedAt: null } } },
     });
 
+    // Fix orphaned units (have currentStationId but no active execution)
+    const orphanedUnits = activeUnits.filter(
+      (u) => u.currentStationId && u.executions.length === 0
+    );
+    for (const orphan of orphanedUnits) {
+      // Mark orphaned units as completed to clear them from the line
+      await prisma.unit.update({
+        where: { id: orphan.id },
+        data: { status: 'completed', currentStationId: null },
+      });
+      await prisma.workOrder.update({
+        where: { id: workOrder.id },
+        data: { qtyCompleted: { increment: 1 } },
+      });
+      await prisma.event.create({
+        data: {
+          eventType: 'unit_completed',
+          siteId: site.id,
+          workOrderId: workOrder.id,
+          unitId: orphan.id,
+          payload: { serialNumber: orphan.serialNumber, reason: 'orphan_cleanup' },
+          source: 'ui',
+        },
+      });
+      console.log(`Fixed orphaned unit: ${orphan.serialNumber}`);
+    }
+
     const completedCount = await prisma.unit.count({
       where: { status: 'completed', workOrderId: workOrder.id },
     });
@@ -51,9 +94,15 @@ export async function POST() {
     const action = Math.random();
     let result: { action: string; detail: string };
 
-    // 35% - Create new unit (if room)
-    if (action < 0.35 && activeUnits.length < 3 && totalUnits < workOrder.qtyOrdered) {
-      const serial = `MTR-${String(totalUnits + 1).padStart(5, '0')}`;
+    // Get global unit count for unique serial numbers
+    const globalUnitCount = await prisma.unit.count();
+
+    // Check if first station is blocked by downtime
+    const firstStationBlocked = downtimeStationIds.has(stations[0].id);
+
+    // 35% - Create new unit (if room, work order has capacity, AND first station not in downtime)
+    if (action < 0.35 && activeUnits.length < 3 && totalUnits < workOrder.qtyOrdered && !firstStationBlocked) {
+      const serial = `MTR-${String(globalUnitCount + 1).padStart(5, '0')}`;
 
       const unit = await prisma.unit.create({
         data: {
@@ -87,17 +136,57 @@ export async function POST() {
         },
       });
 
+      // Consume material for first station (simulate material usage)
+      const availableLot = await prisma.materialLot.findFirst({
+        where: { qtyRemaining: { gt: 0 } },
+        orderBy: { receivedAt: 'asc' }, // FIFO
+      });
+
+      if (availableLot) {
+        const consumeQty = Math.min(1, availableLot.qtyRemaining);
+        await prisma.$transaction([
+          prisma.unitMaterialConsumption.create({
+            data: {
+              unitId: unit.id,
+              materialLotId: availableLot.id,
+              qtyConsumed: consumeQty,
+              stationId: stations[0].id,
+              operatorId: operator.id,
+            },
+          }),
+          prisma.materialLot.update({
+            where: { id: availableLot.id },
+            data: { qtyRemaining: { decrement: consumeQty } },
+          }),
+        ]);
+      }
+
       result = { action: 'unit_created', detail: `New unit ${serial} started at ${stations[0].name}` };
     }
     // 55% - Advance a unit
     else if (action < 0.9 && activeUnits.length > 0) {
-      const unit = activeUnits[Math.floor(Math.random() * activeUnits.length)];
-      const currentStationIndex = stations.findIndex(s => s.id === unit.currentStationId);
-      const currentStation = stations[currentStationIndex];
+      // Filter out units at stations with downtime - they can't progress
+      const unitsNotInDowntime = activeUnits.filter(u => !downtimeStationIds.has(u.currentStationId || ''));
 
-      // Complete current operation
-      const exec = unit.executions[0];
-      if (exec) {
+      if (unitsNotInDowntime.length === 0) {
+        // All units are blocked by downtime
+        result = { action: 'blocked', detail: 'All units blocked by downtime' };
+      } else {
+        const unit = unitsNotInDowntime[Math.floor(Math.random() * unitsNotInDowntime.length)];
+        const currentStationIndex = stations.findIndex(s => s.id === unit.currentStationId);
+        const currentStation = stations[currentStationIndex];
+
+        // Check if next station is in downtime (would block movement)
+        const nextStationIndex = currentStationIndex + 1;
+        const nextStationBlocked = nextStationIndex < stations.length && downtimeStationIds.has(stations[nextStationIndex].id);
+
+        if (nextStationBlocked) {
+          // Can't move to next station - it's in downtime
+          result = { action: 'blocked', detail: `${unit.serialNumber} waiting - next station (${stations[nextStationIndex].name}) is down` };
+        } else {
+          // Complete current operation
+          const exec = unit.executions[0];
+          if (exec) {
         await prisma.unitOperationExecution.update({
           where: { id: exec.id },
           data: { completedAt: new Date(), result: 'pass' },
@@ -135,6 +224,31 @@ export async function POST() {
             },
           });
 
+          // Consume material at new station (simulate material usage)
+          const nextStationLot = await prisma.materialLot.findFirst({
+            where: { qtyRemaining: { gt: 0 } },
+            orderBy: { receivedAt: 'asc' }, // FIFO
+          });
+
+          if (nextStationLot) {
+            const consumeQty = Math.min(1, nextStationLot.qtyRemaining);
+            await prisma.$transaction([
+              prisma.unitMaterialConsumption.create({
+                data: {
+                  unitId: unit.id,
+                  materialLotId: nextStationLot.id,
+                  qtyConsumed: consumeQty,
+                  stationId: nextStation.id,
+                  operatorId: operator.id,
+                },
+              }),
+              prisma.materialLot.update({
+                where: { id: nextStationLot.id },
+                data: { qtyRemaining: { decrement: consumeQty } },
+              }),
+            ]);
+          }
+
           result = { action: 'unit_moved', detail: `${unit.serialNumber} moved to ${nextStation.name}` };
         } else {
           // Complete the unit
@@ -168,75 +282,42 @@ export async function POST() {
       } else {
         result = { action: 'no_op', detail: 'No active execution found' };
       }
-    }
-    // 10% - Downtime event
-    else {
-      const downtimeReasons = await prisma.downtimeReason.findMany();
-      const station = stations[Math.floor(Math.random() * stations.length)];
-
-      // Check for existing downtime
-      const existingDowntime = await prisma.downtimeInterval.findFirst({
-        where: { stationId: station.id, endedAt: null },
-      });
-
-      if (existingDowntime) {
-        // End the downtime
-        await prisma.downtimeInterval.update({
-          where: { id: existingDowntime.id },
-          data: { endedAt: new Date() },
-        });
-
-        await prisma.event.create({
-          data: {
-            eventType: 'downtime_ended',
-            siteId: site.id,
-            stationId: station.id,
-            operatorId: operator.id,
-            payload: { stationName: station.name },
-            source: 'ui',
-          },
-        });
-
-        result = { action: 'downtime_ended', detail: `${station.name} back online` };
-      } else if (downtimeReasons.length > 0) {
-        // Start new downtime
-        const reason = downtimeReasons[Math.floor(Math.random() * downtimeReasons.length)];
-
-        await prisma.downtimeInterval.create({
-          data: {
-            stationId: station.id,
-            operatorId: operator.id,
-            reasonId: reason.id,
-            startedAt: new Date(),
-          },
-        });
-
-        await prisma.event.create({
-          data: {
-            eventType: 'downtime_started',
-            siteId: site.id,
-            stationId: station.id,
-            operatorId: operator.id,
-            payload: { reason: reason.description },
-            source: 'ui',
-          },
-        });
-
-        result = { action: 'downtime_started', detail: `${station.name}: ${reason.description}` };
-      } else {
-        result = { action: 'no_op', detail: 'No downtime reasons configured' };
+        }
       }
     }
+    // 10% - Idle tick
+    else {
+      result = { action: 'idle', detail: 'Waiting for capacity...' };
+    }
+
+    // Get fresh work order data for response
+    const freshWorkOrder = await prisma.workOrder.findUnique({
+      where: { id: workOrder.id },
+    });
+
+    // Get fresh counts
+    const freshActiveUnits = await prisma.unit.count({
+      where: { status: 'in_progress', workOrderId: workOrder.id },
+    });
+    const freshCompletedCount = await prisma.unit.count({
+      where: { status: 'completed', workOrderId: workOrder.id },
+    });
 
     return NextResponse.json({
       success: true,
       ...result,
       stats: {
-        activeUnits: activeUnits.length,
-        completed: completedCount,
+        activeUnits: freshActiveUnits,
+        completed: freshCompletedCount,
         total: totalUnits,
         target: workOrder.qtyOrdered,
       },
+      workOrder: freshWorkOrder ? {
+        orderNumber: freshWorkOrder.orderNumber,
+        productCode: freshWorkOrder.productCode,
+        qtyCompleted: freshWorkOrder.qtyCompleted,
+        qtyOrdered: freshWorkOrder.qtyOrdered,
+      } : null,
     });
   } catch (error) {
     console.error('Simulation tick error:', error);

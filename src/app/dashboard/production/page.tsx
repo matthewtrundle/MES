@@ -7,7 +7,7 @@ async function getProductionData() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [completedUnits, allUnitsToday, workOrders, hourlyBreakdown] = await Promise.all([
+  const [completedUnitsToday, allCompletedUnits, allUnitsToday, workOrders, inProgressUnits] = await Promise.all([
     // Completed units today
     prisma.unit.findMany({
       where: {
@@ -16,6 +16,14 @@ async function getProductionData() {
       },
       include: { workOrder: true },
       orderBy: { updatedAt: 'desc' },
+    }),
+
+    // All completed units ever (for total count)
+    prisma.unit.findMany({
+      where: { status: 'completed' },
+      include: { workOrder: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 20, // Recent completions
     }),
 
     // All units created today
@@ -33,40 +41,47 @@ async function getProductionData() {
       orderBy: { priority: 'desc' },
     }),
 
-    // Hourly completion breakdown
-    prisma.unit.groupBy({
-      by: ['updatedAt'],
-      where: {
-        status: 'completed',
-        updatedAt: { gte: today },
-      },
-      _count: true,
+    // In-progress units count
+    prisma.unit.count({
+      where: { status: 'in_progress' },
     }),
   ]);
+
+  // Get total completed count
+  const totalCompletedCount = await prisma.unit.count({
+    where: { status: 'completed' },
+  });
 
   // Calculate hourly stats
   const hourlyStats: { hour: number; count: number }[] = [];
   for (let h = 0; h <= new Date().getHours(); h++) {
-    const count = completedUnits.filter((u) => {
+    const count = completedUnitsToday.filter((u) => {
       const hour = new Date(u.updatedAt).getHours();
       return hour === h;
     }).length;
     hourlyStats.push({ hour: h, count });
   }
 
+  // Use the larger of today's completed or work order qtyCompleted (in case timestamps are off)
+  const workOrdersCompleted = workOrders.reduce((sum, wo) => sum + wo.qtyCompleted, 0);
+
   return {
-    completedUnits,
+    completedUnitsToday,
+    allCompletedUnits,
     allUnitsToday,
     workOrders,
     hourlyStats,
     target: 10, // Daily target
-    completedCount: completedUnits.length,
+    completedTodayCount: completedUnitsToday.length,
+    totalCompletedCount,
+    workOrdersCompleted,
+    inProgressCount: inProgressUnits,
   };
 }
 
 export default async function ProductionPage() {
   const data = await getProductionData();
-  const progressPercent = Math.min(100, (data.completedCount / data.target) * 100);
+  const progressPercent = Math.min(100, (data.completedTodayCount / data.target) * 100);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -109,7 +124,7 @@ export default async function ProductionPage() {
               <p className="text-sm text-gray-500">Target: {data.target} units</p>
             </div>
             <div className="text-right">
-              <p className="text-4xl font-bold text-green-600">{data.completedCount}</p>
+              <p className="text-4xl font-bold text-green-600">{data.completedTodayCount}</p>
               <p className="text-sm text-gray-500">completed</p>
             </div>
           </div>
@@ -124,7 +139,7 @@ export default async function ProductionPage() {
           <p className="mt-2 text-sm text-gray-600 text-center">
             {progressPercent >= 100
               ? 'Target achieved!'
-              : `${data.target - data.completedCount} more to reach target`}
+              : `${data.target - data.completedTodayCount} more to reach target`}
           </p>
         </div>
 
@@ -157,18 +172,18 @@ export default async function ProductionPage() {
           <div className="rounded-lg border border-gray-200 bg-white">
             <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
               <h3 className="font-semibold text-gray-900">
-                Completed Today ({data.completedUnits.length})
+                Completed Today ({data.completedUnitsToday.length})
               </h3>
             </div>
             <div className="max-h-96 divide-y divide-gray-100 overflow-y-auto">
-              {data.completedUnits.length === 0 ? (
+              {data.completedUnitsToday.length === 0 ? (
                 <div className="px-4 py-8 text-center text-gray-500">
                   <Icons.unit className="mx-auto h-8 w-8 text-gray-300" />
                   <p className="mt-2">No units completed yet today</p>
                   <p className="text-xs text-gray-400">Start the simulation to see production</p>
                 </div>
               ) : (
-                data.completedUnits.map((unit) => (
+                data.completedUnitsToday.map((unit) => (
                   <div
                     key={unit.id}
                     className="flex items-center justify-between px-4 py-3"

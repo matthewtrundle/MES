@@ -71,7 +71,7 @@ async function main() {
   const stationA = await prisma.station.create({
     data: {
       id: FIXED_IDS.stations.a_winding,
-      name: 'Station A - Winding',
+      name: 'Winding',
       stationType: 'winding',
       sequenceOrder: 1,
       siteId: site.id,
@@ -82,7 +82,7 @@ async function main() {
   const stationB = await prisma.station.create({
     data: {
       id: FIXED_IDS.stations.b_magnet,
-      name: 'Station B - Magnet Install',
+      name: 'Magnet Install',
       stationType: 'assembly',
       sequenceOrder: 2,
       siteId: site.id,
@@ -93,7 +93,7 @@ async function main() {
   const stationC = await prisma.station.create({
     data: {
       id: FIXED_IDS.stations.c_housing,
-      name: 'Station C - Housing Assembly',
+      name: 'Housing Assembly',
       stationType: 'assembly',
       sequenceOrder: 3,
       siteId: site.id,
@@ -104,7 +104,7 @@ async function main() {
   const stationD = await prisma.station.create({
     data: {
       id: FIXED_IDS.stations.d_inspection,
-      name: 'Station D - Quality Inspection',
+      name: 'Quality Inspection',
       stationType: 'inspection',
       sequenceOrder: 4,
       siteId: site.id,
@@ -115,7 +115,7 @@ async function main() {
   const stationE = await prisma.station.create({
     data: {
       id: FIXED_IDS.stations.e_electrical,
-      name: 'Station E - Electrical Test',
+      name: 'Electrical Test',
       stationType: 'test',
       sequenceOrder: 5,
       siteId: site.id,
@@ -126,7 +126,7 @@ async function main() {
   const stationF = await prisma.station.create({
     data: {
       id: FIXED_IDS.stations.f_final,
-      name: 'Station F - Final Test',
+      name: 'Final Test',
       stationType: 'test',
       sequenceOrder: 6,
       siteId: site.id,

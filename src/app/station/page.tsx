@@ -7,15 +7,10 @@ import { Button } from '@/components/ui/button';
 export default async function StationSelectionPage() {
   const user = await requireUser();
 
-  // Get all active stations for the user's sites
+  // Get all active stations (simplified - show all stations for demo)
   const stations = await prisma.station.findMany({
     where: {
       active: true,
-      site: {
-        users: {
-          some: { id: user.id },
-        },
-      },
     },
     include: {
       site: true,

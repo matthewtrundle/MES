@@ -79,6 +79,20 @@ async function getStationData(stationId: string) {
       )
     : 100;
 
+  // Calculate average cycle time from completed operations
+  const completedOps = recentOperations.filter(op => op.completedAt);
+  const avgCycleTime = completedOps.length > 0
+    ? Math.round(
+        completedOps.reduce((sum, op) => {
+          const duration = op.completedAt!.getTime() - op.startedAt.getTime();
+          return sum + duration / 60000; // Convert to minutes
+        }, 0) / completedOps.length
+      )
+    : null;
+
+  // Get estimated time from operations (if available)
+  const estimatedTime = recentOperations[0]?.operation?.estimatedMinutes ?? null;
+
   // Get recent events
   const recentEvents = await prisma.event.findMany({
     where: { stationId },
@@ -95,6 +109,8 @@ async function getStationData(stationId: string) {
     totalDowntimeMinutes,
     completedToday,
     passRate,
+    avgCycleTime,
+    estimatedTime,
     recentEvents,
   };
 }
@@ -107,7 +123,7 @@ export default async function StationDetailPage({ params }: StationPageProps) {
     notFound();
   }
 
-  const { station, activeDowntime, unitsAtStation, recentOperations, todayDowntime, totalDowntimeMinutes, completedToday, passRate, recentEvents } = data;
+  const { station, activeDowntime, unitsAtStation, recentOperations, todayDowntime, totalDowntimeMinutes, completedToday, passRate, avgCycleTime, estimatedTime, recentEvents } = data;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -188,8 +204,8 @@ export default async function StationDetailPage({ params }: StationPageProps) {
           </div>
         )}
 
-        {/* Stats Row */}
-        <div className="mb-6 grid grid-cols-4 gap-4">
+        {/* Stats Row - Key metrics for drill-down */}
+        <div className="mb-6 grid grid-cols-5 gap-4">
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Icons.unit className="h-4 w-4" />
@@ -206,6 +222,29 @@ export default async function StationDetailPage({ params }: StationPageProps) {
             </div>
             <p className="mt-1 text-3xl font-bold text-gray-900">{completedToday}</p>
           </div>
+          {/* Avg Cycle Time - Critical demo metric */}
+          <div className={`rounded-lg border p-4 ${
+            avgCycleTime && estimatedTime && avgCycleTime > estimatedTime
+              ? 'border-amber-300 bg-amber-50'
+              : 'border-gray-200 bg-white'
+          }`}>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Icons.timer className="h-4 w-4" />
+              <span>Avg Cycle Time</span>
+            </div>
+            <p className={`mt-1 text-3xl font-bold ${
+              avgCycleTime && estimatedTime && avgCycleTime > estimatedTime
+                ? 'text-amber-600'
+                : 'text-gray-900'
+            }`}>
+              {avgCycleTime ?? '—'}m
+            </p>
+            {estimatedTime && (
+              <p className="text-xs text-gray-500 mt-1">
+                Target: {estimatedTime}m
+              </p>
+            )}
+          </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Icons.gauge className="h-4 w-4" />
@@ -218,6 +257,7 @@ export default async function StationDetailPage({ params }: StationPageProps) {
             >
               {passRate}%
             </p>
+            <p className="text-xs text-gray-500 mt-1">Target: ≥98%</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -231,6 +271,7 @@ export default async function StationDetailPage({ params }: StationPageProps) {
             >
               {totalDowntimeMinutes}m
             </p>
+            <p className="text-xs text-gray-500 mt-1">Target: &lt;15m</p>
           </div>
         </div>
 
@@ -247,7 +288,7 @@ export default async function StationDetailPage({ params }: StationPageProps) {
                   <p className="mt-2">No units currently at this station</p>
                 </div>
               ) : (
-                unitsAtStation.map((unit) => {
+                unitsAtStation.map((unit, index) => {
                   const exec = unit.executions[0];
                   const cycleTime = exec
                     ? Math.round(
@@ -265,14 +306,16 @@ export default async function StationDetailPage({ params }: StationPageProps) {
                           {unit.serialNumber}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {unit.workOrder.productCode} - {exec?.operation.sequence ?? '?'}.{' '}
-                          {exec?.operator?.name ?? 'No operator'}
+                          {unit.workOrder.productCode} - Op {exec?.operation.sequence ?? '?'}
+                          {exec?.operator && ` • ${exec.operator.name}`}
                         </p>
                       </div>
                       <div className="text-right">
-                        <UnitStatusBadge status={unit.status as 'in_progress'} />
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+                          In Progress
+                        </span>
                         <p className="mt-1 text-sm text-gray-500">
-                          {cycleTime} min in progress
+                          {cycleTime} min
                         </p>
                       </div>
                     </div>

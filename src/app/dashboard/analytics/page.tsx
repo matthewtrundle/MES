@@ -2,7 +2,8 @@ import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
-import { ParetoChart, toParetoData } from '@/components/supervisor/ParetoChart';
+import { ParetoChart } from '@/components/supervisor/ParetoChart';
+import { toParetoData } from '@/lib/utils/pareto';
 
 interface SearchParams {
   days?: string;

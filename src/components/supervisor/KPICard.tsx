@@ -16,6 +16,12 @@ interface KPICardProps {
   status?: 'normal' | 'warning' | 'critical' | 'success';
   className?: string;
   href?: string;
+  // Target comparison - shows "value / target" format
+  target?: {
+    value: number | string;
+    label?: string; // e.g., "by now", "max", "min"
+    comparison?: 'above' | 'below' | 'equal'; // What's good?
+  };
 }
 
 export function KPICard({
@@ -27,33 +33,38 @@ export function KPICard({
   status = 'normal',
   className = '',
   href,
+  target,
 }: KPICardProps) {
   const Icon = Icons[icon] as LucideIcon;
 
   const statusStyles = {
     normal: {
-      border: 'border-gray-200',
-      iconBg: 'bg-gray-100',
-      iconColor: 'text-gray-600',
-      valueColor: 'text-gray-900',
+      border: 'border-slate-200',
+      iconBg: 'bg-gradient-to-br from-slate-100 to-slate-200',
+      iconColor: 'text-slate-600',
+      valueColor: 'text-slate-900',
+      glow: '',
     },
     warning: {
-      border: 'border-amber-200',
-      iconBg: 'bg-amber-100',
+      border: 'border-amber-300',
+      iconBg: 'bg-gradient-to-br from-amber-100 to-amber-200',
       iconColor: 'text-amber-600',
       valueColor: 'text-amber-700',
+      glow: 'status-glow-amber',
     },
     critical: {
-      border: 'border-red-200',
-      iconBg: 'bg-red-100',
+      border: 'border-red-300',
+      iconBg: 'bg-gradient-to-br from-red-100 to-red-200',
       iconColor: 'text-red-600',
       valueColor: 'text-red-700',
+      glow: 'status-glow-red',
     },
     success: {
-      border: 'border-green-200',
-      iconBg: 'bg-green-100',
+      border: 'border-green-300',
+      iconBg: 'bg-gradient-to-br from-green-100 to-green-200',
       iconColor: 'text-green-600',
       valueColor: 'text-green-700',
+      glow: 'status-glow-green',
     },
   };
 
@@ -62,9 +73,9 @@ export function KPICard({
   const cardContent = (
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className={`text-3xl font-bold ${styles.valueColor}`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{title}</p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className={`data-readout text-3xl ${styles.valueColor}`}>
               {value}
             </span>
             {trend && (
@@ -74,7 +85,7 @@ export function KPICard({
                     ? 'text-green-600'
                     : trend.direction === 'down'
                       ? 'text-red-600'
-                      : 'text-gray-500'
+                      : 'text-slate-500'
                 }`}
               >
                 {trend.direction === 'up' ? (
@@ -86,15 +97,33 @@ export function KPICard({
               </span>
             )}
           </div>
-          {subtitle && (
-            <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+          {/* Target comparison - turns numbers into performance signals */}
+          {target && (
+            <p className="mt-1 text-xs">
+              <span className="text-slate-400">Target: </span>
+              <span className={`font-semibold ${
+                status === 'success' ? 'text-green-600' :
+                status === 'warning' ? 'text-amber-600' :
+                status === 'critical' ? 'text-red-600' :
+                'text-slate-600'
+              }`}>
+                {target.comparison === 'above' ? '≥' : target.comparison === 'below' ? '≤' : ''}{target.value}
+              </span>
+              {target.label && <span className="text-slate-400"> {target.label}</span>}
+            </p>
+          )}
+          {subtitle && !target && (
+            <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
+          )}
+          {subtitle && target && (
+            <p className="text-[10px] text-slate-400">{subtitle}</p>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <div className={`rounded-lg p-2 ${styles.iconBg}`}>
+          <div className={`rounded-xl p-2.5 shadow-sm ${styles.iconBg}`}>
             <Icon className={`h-6 w-6 ${styles.iconColor}`} />
           </div>
-          {href && <Icons.chevronRight className="h-5 w-5 text-gray-400" />}
+          {href && <Icons.chevronRight className="h-5 w-5 text-slate-300" />}
         </div>
       </div>
   );
@@ -103,7 +132,7 @@ export function KPICard({
     return (
       <Link
         href={href}
-        className={`block rounded-lg border bg-white p-4 transition-all hover:shadow-lg hover:scale-[1.02] ${styles.border} ${className}`}
+        className={`block industrial-card p-4 transition-all hover:shadow-lg hover:scale-[1.02] ${styles.border} ${className}`}
       >
         {cardContent}
       </Link>
@@ -112,7 +141,7 @@ export function KPICard({
 
   return (
     <div
-      className={`rounded-lg border bg-white p-4 ${styles.border} ${className}`}
+      className={`industrial-card p-4 ${styles.border} ${className}`}
     >
       {cardContent}
     </div>

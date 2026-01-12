@@ -30,6 +30,7 @@ import {
   ArrowDown,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   Search,
   RefreshCw,
   Zap,
@@ -37,6 +38,15 @@ import {
   Scale,
   ScanLine,
   CircleDot,
+  Info,
+  X,
+  ListOrdered,
+  MoreHorizontal,
+  Layers,
+  FileText,
+  Brain,
+  History,
+  Plus,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -94,6 +104,18 @@ export const Icons = {
   // Other
   power: Zap,
   dot: CircleDot,
+  info: Info,
+  close: X,
+  plus: Plus,
+
+  // Navigation/UI icons
+  chevronDown: ChevronDown,
+  list: ListOrdered,
+  more: MoreHorizontal,
+  layers: Layers,
+  document: FileText,
+  ai: Brain,
+  history: History,
 } as const;
 
 export type IconName = keyof typeof Icons;

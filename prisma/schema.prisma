@@ -54,6 +54,8 @@ model Site {
   workOrders      WorkOrder[]
   downtimeReasons DowntimeReason[]
   users           User[]           @relation("UserSites")
+  aiInsights      AIInsight[]
+  aiConversations AIConversation[]
 
   @@map("sites")
 }
@@ -75,6 +77,7 @@ model Station {
   downtimeIntervals    DowntimeInterval[]
   materialConsumptions UnitMaterialConsumption[]
   ncrs                 NonconformanceRecord[]
+  aiInsights           AIInsight[]
 
   @@index([siteId])
   @@map("stations")
@@ -154,6 +157,7 @@ model User {
   materialConsumptions UnitMaterialConsumption[]
   qualityResults       QualityCheckResult[]
   auditLogs            AuditLog[]
+  aiConversations      AIConversation[]
 
   @@map("users")
 }
@@ -378,4 +382,46 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([userId, timestamp])
   @@map("audit_logs")
+}
+
+// =============================================================================
+// AI MONITORING AGENT
+// =============================================================================
+
+model AIInsight {
+  id             String    @id @default(uuid())
+  siteId         String    @map("site_id")
+  stationId      String?   @map("station_id")
+  insightType    String    @map("insight_type") // anomaly | recommendation | prediction
+  severity       String    // info | warning | critical
+  title          String
+  description    String
+  payload        Json      @default("{}")
+  confidence     Float     @default(0.8)
+  acknowledged   Boolean   @default(false)
+  acknowledgedAt DateTime? @map("acknowledged_at")
+  acknowledgedBy String?   @map("acknowledged_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  site    Site     @relation(fields: [siteId], references: [id])
+  station Station? @relation(fields: [stationId], references: [id])
+
+  @@index([siteId, createdAt])
+  @@index([severity, acknowledged])
+  @@map("ai_insights")
+}
+
+model AIConversation {
+  id        String   @id @default(uuid())
+  siteId    String   @map("site_id")
+  userId    String   @map("user_id")
+  messages  Json     @default("[]") // Array of {role, content, timestamp}
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  site Site @relation(fields: [siteId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, updatedAt])
+  @@map("ai_conversations")
 }
