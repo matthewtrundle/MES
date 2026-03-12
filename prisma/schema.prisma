@@ -450,6 +450,7 @@ model NonconformanceRecord {
   actionDueDate     DateTime? @map("action_due_date")
   supplierNotified  Boolean   @default(false) @map("supplier_notified")
   supplierNotifiedAt DateTime? @map("supplier_notified_at")
+  severity          String    @default("minor") // minor | major | critical
   status            String    @default("open") // open | dispositioned | closed
   source            String    @default("production") // production | iqc
   createdAt         DateTime  @default(now()) @map("created_at")
