@@ -78,6 +78,7 @@ model Station {
   materialConsumptions UnitMaterialConsumption[]
   ncrs                 NonconformanceRecord[]
   aiInsights           AIInsight[]
+  bomItems             BillOfMaterial[]
 
   @@index([siteId])
   @@map("stations")
@@ -127,8 +128,29 @@ model Routing {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   workOrders WorkOrder[]
+  bom        BillOfMaterial[]
 
   @@map("routings")
+}
+
+model BillOfMaterial {
+  id            String  @id @default(uuid())
+  routingId     String  @map("routing_id")
+  stationId     String  @map("station_id")
+  materialCode  String  @map("material_code")
+  description   String?
+  qtyPerUnit    Float   @map("qty_per_unit")
+  unitOfMeasure String  @default("EA") @map("unit_of_measure")
+  active        Boolean @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  routing Routing @relation(fields: [routingId], references: [id])
+  station Station @relation(fields: [stationId], references: [id])
+
+  @@unique([routingId, materialCode, stationId])
+  @@index([routingId])
+  @@map("bill_of_materials")
 }
 
 // =============================================================================
@@ -158,6 +180,10 @@ model User {
   qualityResults       QualityCheckResult[]
   auditLogs            AuditLog[]
   aiConversations      AIConversation[]
+  receivedMaterialLots MaterialLot[]             @relation("ReceivedMaterialLots")
+  kitsCreated          Kit[]                     @relation("KitCreator")
+  kitsIssued           Kit[]                     @relation("KitIssuer")
+  kitLinesPicked       KitLine[]                 @relation("KitLinePicker")
 
   @@map("users")
 }
@@ -188,6 +214,7 @@ model WorkOrder {
   routing    Routing?             @relation(fields: [routingId], references: [id])
   units      Unit[]
   operations WorkOrderOperation[]
+  kit        Kit?
 
   @@index([siteId, status])
   @@index([orderNumber])
@@ -234,17 +261,18 @@ model Unit {
 }
 
 model UnitOperationExecution {
-  id          String    @id @default(uuid())
-  unitId      String    @map("unit_id")
-  operationId String    @map("operation_id")
-  stationId   String    @map("station_id")
-  operatorId  String    @map("operator_id")
-  startedAt   DateTime  @map("started_at")
-  completedAt DateTime? @map("completed_at")
-  result      String?   // pass | fail | rework
-  notes       String?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id               String    @id @default(uuid())
+  unitId           String    @map("unit_id")
+  operationId      String    @map("operation_id")
+  stationId        String    @map("station_id")
+  operatorId       String    @map("operator_id")
+  startedAt        DateTime  @map("started_at")
+  completedAt      DateTime? @map("completed_at")
+  cycleTimeMinutes Float?    @map("cycle_time_minutes")
+  result           String?   // pass | fail | rework
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   unit      Unit               @relation(fields: [unitId], references: [id])
   operation WorkOrderOperation @relation(fields: [operationId], references: [id])
@@ -261,20 +289,28 @@ model UnitOperationExecution {
 // =============================================================================
 
 model MaterialLot {
-  id           String   @id @default(uuid())
-  lotNumber    String   @unique @map("lot_number")
-  materialCode String   @map("material_code")
-  description  String?
-  qtyReceived  Float    @map("qty_received")
-  qtyRemaining Float    @map("qty_remaining")
-  receivedAt   DateTime @default(now()) @map("received_at")
-  expiresAt    DateTime? @map("expires_at")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  lotNumber           String   @unique @map("lot_number")
+  materialCode        String   @map("material_code")
+  description         String?
+  qtyReceived         Float    @map("qty_received")
+  qtyRemaining        Float    @map("qty_remaining")
+  unitOfMeasure       String   @default("EA") @map("unit_of_measure")
+  supplier            String?
+  purchaseOrderNumber String?  @map("purchase_order_number")
+  status              String   @default("available") // available | quarantine | expired | depleted
+  receivedById        String?  @map("received_by_id")
+  receivedAt          DateTime @default(now()) @map("received_at")
+  expiresAt           DateTime? @map("expires_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
+  receivedBy   User?                    @relation("ReceivedMaterialLots", fields: [receivedById], references: [id])
   consumptions UnitMaterialConsumption[]
+  kitLines     KitLine[]
 
   @@index([materialCode])
+  @@index([status])
   @@map("material_lots")
 }
 
@@ -361,6 +397,50 @@ model DowntimeInterval {
 
   @@index([stationId, startedAt])
   @@map("downtime_intervals")
+}
+
+// =============================================================================
+// KITTING
+// =============================================================================
+
+model Kit {
+  id          String    @id @default(uuid())
+  workOrderId String    @unique @map("work_order_id")
+  status      String    @default("pending") // pending | in_progress | complete | issued
+  createdById String    @map("created_by_id")
+  issuedAt    DateTime? @map("issued_at")
+  issuedById  String?   @map("issued_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
+  createdBy User      @relation("KitCreator", fields: [createdById], references: [id])
+  issuedBy  User?     @relation("KitIssuer", fields: [issuedById], references: [id])
+  lines     KitLine[]
+
+  @@index([status])
+  @@map("kits")
+}
+
+model KitLine {
+  id            String    @id @default(uuid())
+  kitId         String    @map("kit_id")
+  materialCode  String    @map("material_code")
+  description   String?
+  qtyRequired   Float     @map("qty_required")
+  qtyPicked     Float     @default(0) @map("qty_picked")
+  materialLotId String?   @map("material_lot_id")
+  pickedById    String?   @map("picked_by_id")
+  pickedAt      DateTime? @map("picked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  kit         Kit          @relation(fields: [kitId], references: [id])
+  materialLot MaterialLot? @relation(fields: [materialLotId], references: [id])
+  pickedBy    User?        @relation("KitLinePicker", fields: [pickedById], references: [id])
+
+  @@index([kitId])
+  @@map("kit_lines")
 }
 
 // =============================================================================

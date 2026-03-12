@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/db/prisma';
 import { requireRole } from '@/lib/auth/rbac';
+import { emitEvent, generateUniqueIdempotencyKey } from '@/lib/db/events';
+import { logAuditTrail } from '@/lib/db/audit';
 import { revalidatePath } from 'next/cache';
 import type { LossType } from '@/lib/types/downtime-reasons';
 
@@ -62,6 +64,16 @@ export async function createDowntimeReason(data: {
     },
   });
 
+  await logAuditTrail(user.id, 'create', 'DowntimeReason', reason.id, null, { code: data.code, description: data.description, lossType: data.lossType });
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId: data.siteId,
+    operatorId: user.id,
+    payload: { action: 'downtime_reason_created', reasonId: reason.id, code: data.code },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
   revalidatePath('/admin/downtime-reasons');
   revalidatePath('/station');
 
@@ -109,6 +121,16 @@ export async function updateDowntimeReason(
     data,
   });
 
+  await logAuditTrail(user.id, 'update', 'DowntimeReason', id, { code: existing.code, description: existing.description, lossType: existing.lossType, active: existing.active }, data);
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId: existing.siteId,
+    operatorId: user.id,
+    payload: { action: 'downtime_reason_updated', reasonId: id, changes: JSON.parse(JSON.stringify(data)) },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
   revalidatePath('/admin/downtime-reasons');
   revalidatePath('/station');
 
@@ -144,6 +166,17 @@ export async function deleteDowntimeReason(id: string) {
       where: { id },
     });
   }
+
+  const action = existing._count.downtimeIntervals > 0 ? 'downtime_reason_deactivated' : 'downtime_reason_deleted';
+  await logAuditTrail(user.id, 'delete', 'DowntimeReason', id, { code: existing.code, description: existing.description }, null);
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId: existing.siteId,
+    operatorId: user.id,
+    payload: { action, reasonId: id, code: existing.code },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
 
   revalidatePath('/admin/downtime-reasons');
   revalidatePath('/station');

@@ -5,6 +5,7 @@ import { emitEvent, generateIdempotencyKey } from '@/lib/db/events';
 import { requireRole, requireUser } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
+import { recordQualityCheckSchema, createNCRSchema, dispositionNCRSchema, closeNCRSchema } from '@/lib/validation/schemas';
 
 /**
  * Get quality check definitions for a station
@@ -32,6 +33,7 @@ export async function recordQualityCheck(data: {
   result: 'pass' | 'fail';
   values: Prisma.InputJsonValue;
 }) {
+  recordQualityCheckSchema.parse(data);
   const user = await requireUser();
 
   const unit = await prisma.unit.findUnique({
@@ -124,6 +126,7 @@ export async function createNCR(data: {
   defectType: string;
   description?: string;
 }) {
+  createNCRSchema.parse(data);
   const user = await requireUser();
 
   const unit = await prisma.unit.findUnique({
@@ -193,6 +196,7 @@ export async function dispositionNCR(
   ncrId: string,
   disposition: 'rework' | 'scrap' | 'use_as_is' | 'defer'
 ) {
+  dispositionNCRSchema.parse({ ncrId, disposition });
   const user = await requireRole(['supervisor', 'admin']);
 
   const ncr = await prisma.nonconformanceRecord.findUnique({
@@ -308,6 +312,7 @@ export async function dispositionNCR(
  * Close an NCR (after rework is complete)
  */
 export async function closeNCR(ncrId: string, notes?: string) {
+  closeNCRSchema.parse({ ncrId, notes });
   const user = await requireRole(['supervisor', 'admin']);
 
   const ncr = await prisma.nonconformanceRecord.findUnique({

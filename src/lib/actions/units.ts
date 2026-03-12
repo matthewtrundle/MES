@@ -5,6 +5,7 @@ import { emitEvent, generateIdempotencyKey } from '@/lib/db/events';
 import { requireRole, requireUser } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
 import { v4 as uuidv4 } from 'uuid';
+import { createUnitSchema, startOperationSchema, completeOperationSchema } from '@/lib/validation/schemas';
 
 /**
  * Generate serial number based on site config
@@ -35,6 +36,7 @@ async function generateSerialNumber(siteId: string): Promise<string> {
  * Create a new unit for a work order
  */
 export async function createUnit(workOrderId: string, serialNumber?: string) {
+  createUnitSchema.parse({ workOrderId, serialNumber });
   const user = await requireUser();
 
   const workOrder = await prisma.workOrder.findUnique({
@@ -115,6 +117,7 @@ export async function startOperation(
   stationId: string,
   operationId: string
 ) {
+  startOperationSchema.parse({ unitId, stationId, operationId });
   const user = await requireUser();
 
   const unit = await prisma.unit.findUnique({
@@ -209,6 +212,7 @@ export async function completeOperation(
   result: 'pass' | 'fail' | 'rework' = 'pass',
   notes?: string
 ) {
+  completeOperationSchema.parse({ executionId, result, notes });
   const user = await requireUser();
 
   const execution = await prisma.unitOperationExecution.findUnique({
@@ -236,11 +240,16 @@ export async function completeOperation(
     throw new Error('Operation already completed');
   }
 
+  // Calculate cycle time
+  const completedAt = new Date();
+  const cycleTimeMinutes = (completedAt.getTime() - execution.startedAt.getTime()) / 60000;
+
   // Update execution
   await prisma.unitOperationExecution.update({
     where: { id: executionId },
     data: {
-      completedAt: new Date(),
+      completedAt,
+      cycleTimeMinutes: Math.round(cycleTimeMinutes * 100) / 100,
       result,
       notes,
     },

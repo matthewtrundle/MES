@@ -1,10 +1,13 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db/prisma';
 import { Role } from '@prisma/client';
 
 // Type for user with sites included
 import { User, Site } from '@prisma/client';
 export type UserWithSites = User & { sites: Site[] };
+
+const clerkEnabled =
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('REPLACE_ME');
 
 /**
  * Custom HTTP error class for API responses
@@ -38,6 +41,16 @@ export function unauthorized(message: string = 'Unauthorized: Not logged in'): H
  * Creates the user if they don't exist (first login)
  */
 export async function getCurrentUser() {
+  // Demo mode: return the first admin user from the database
+  if (!clerkEnabled) {
+    const demoUser = await prisma.user.findFirst({
+      where: { role: 'admin' },
+      include: { sites: true },
+    });
+    return demoUser;
+  }
+
+  const { auth, currentUser } = await import('@clerk/nextjs/server');
   const { userId } = await auth();
 
   if (!userId) {

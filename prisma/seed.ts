@@ -35,6 +35,8 @@ async function main() {
   // Clean existing data (in reverse dependency order)
   console.log('Cleaning existing data...');
   await prisma.auditLog.deleteMany();
+  await prisma.kitLine.deleteMany();
+  await prisma.kit.deleteMany();
   await prisma.qualityCheckResult.deleteMany();
   await prisma.unitMaterialConsumption.deleteMany();
   await prisma.downtimeInterval.deleteMany();
@@ -44,13 +46,17 @@ async function main() {
   await prisma.workOrderOperation.deleteMany();
   await prisma.workOrder.deleteMany();
   await prisma.materialLot.deleteMany();
+  await prisma.billOfMaterial.deleteMany();
   await prisma.qualityCheckDefinition.deleteMany();
   await prisma.routing.deleteMany();
   await prisma.downtimeReason.deleteMany();
   await prisma.station.deleteMany();
   await prisma.user.deleteMany();
   await prisma.site.deleteMany();
-  await prisma.event.deleteMany();
+  // Disable immutable events trigger temporarily, then truncate
+  await prisma.$executeRawUnsafe(`ALTER TABLE events DISABLE TRIGGER ALL`);
+  await prisma.$executeRawUnsafe(`TRUNCATE TABLE events CASCADE`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE events ENABLE TRIGGER ALL`);
 
   // Create Site
   console.log('Creating site...');
@@ -305,6 +311,61 @@ async function main() {
     },
   });
 
+  // Create Bill of Materials
+  console.log('Creating BOM...');
+  await Promise.all([
+    prisma.billOfMaterial.create({
+      data: {
+        routingId: routing.id,
+        stationId: stationA.id,
+        materialCode: 'WIRE-CU-18AWG',
+        description: 'Copper Winding Wire 18AWG',
+        qtyPerUnit: 50,
+        unitOfMeasure: 'FT',
+      },
+    }),
+    prisma.billOfMaterial.create({
+      data: {
+        routingId: routing.id,
+        stationId: stationB.id,
+        materialCode: 'MAG-NEOD-10MM',
+        description: 'Neodymium Magnets 10mm',
+        qtyPerUnit: 4,
+        unitOfMeasure: 'EA',
+      },
+    }),
+    prisma.billOfMaterial.create({
+      data: {
+        routingId: routing.id,
+        stationId: stationC.id,
+        materialCode: 'HOUS-ALU-M42',
+        description: 'Aluminum Housing M42',
+        qtyPerUnit: 1,
+        unitOfMeasure: 'EA',
+      },
+    }),
+    prisma.billOfMaterial.create({
+      data: {
+        routingId: routing.id,
+        stationId: stationC.id,
+        materialCode: 'BEAR-608-2RS',
+        description: 'Ball Bearing 608-2RS',
+        qtyPerUnit: 2,
+        unitOfMeasure: 'EA',
+      },
+    }),
+    prisma.billOfMaterial.create({
+      data: {
+        routingId: routing.id,
+        stationId: stationC.id,
+        materialCode: 'SEAL-NBR-42',
+        description: 'NBR Seal Ring 42mm',
+        qtyPerUnit: 2,
+        unitOfMeasure: 'EA',
+      },
+    }),
+  ]);
+
   // Create Material Lots
   console.log('Creating material lots...');
   const materialLots = await Promise.all([
@@ -315,6 +376,11 @@ async function main() {
         description: 'Copper Winding Wire 18AWG',
         qtyReceived: 1000,
         qtyRemaining: 950,
+        unitOfMeasure: 'FT',
+        supplier: 'Acme Wire Co',
+        purchaseOrderNumber: 'PO-2024-001',
+        status: 'available',
+        expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
       },
     }),
     prisma.materialLot.create({
@@ -324,6 +390,10 @@ async function main() {
         description: 'Neodymium Magnets 10mm',
         qtyReceived: 500,
         qtyRemaining: 480,
+        unitOfMeasure: 'EA',
+        supplier: 'MagnetWorld',
+        purchaseOrderNumber: 'PO-2024-002',
+        status: 'available',
       },
     }),
     prisma.materialLot.create({
@@ -333,6 +403,35 @@ async function main() {
         description: 'Ball Bearing 608-2RS',
         qtyReceived: 200,
         qtyRemaining: 190,
+        unitOfMeasure: 'EA',
+        supplier: 'BearingsCo',
+        purchaseOrderNumber: 'PO-2024-003',
+        status: 'available',
+      },
+    }),
+    prisma.materialLot.create({
+      data: {
+        lotNumber: 'LOT-HOUS-2024-001',
+        materialCode: 'HOUS-ALU-M42',
+        description: 'Aluminum Housing M42',
+        qtyReceived: 100,
+        qtyRemaining: 95,
+        unitOfMeasure: 'EA',
+        supplier: 'CastingCo',
+        status: 'available',
+      },
+    }),
+    prisma.materialLot.create({
+      data: {
+        lotNumber: 'LOT-SEAL-2024-001',
+        materialCode: 'SEAL-NBR-42',
+        description: 'NBR Seal Ring 42mm',
+        qtyReceived: 300,
+        qtyRemaining: 290,
+        unitOfMeasure: 'EA',
+        supplier: 'SealTech',
+        status: 'available',
+        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // Expiring soon for demo
       },
     }),
   ]);

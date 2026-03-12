@@ -10,9 +10,12 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { requireRoleApi, HttpError } from '@/lib/auth/rbac';
 
 export async function POST(request: Request) {
   try {
+    await requireRoleApi(['admin']);
+
     // Get speed parameter (run multiple ticks at once for faster simulation)
     const { searchParams } = new URL(request.url);
     const speed = Math.min(parseInt(searchParams.get('speed') || '1', 10), 5);
@@ -320,6 +323,9 @@ export async function POST(request: Request) {
       } : null,
     });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('Simulation tick error:', error);
     return NextResponse.json({ error: 'Simulation failed' }, { status: 500 });
   }

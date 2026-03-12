@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { answerQuestion, isAIEnabled, ChatMessage } from '@/lib/ai';
 import { Prisma } from '@prisma/client';
+import { requireUserApi, HttpError } from '@/lib/auth/rbac';
 
 interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -17,6 +18,8 @@ interface ConversationMessage {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireUserApi();
+
     // Check if AI is enabled
     if (!isAIEnabled()) {
       return NextResponse.json(
@@ -110,6 +113,9 @@ export async function POST(request: NextRequest) {
       messageCount: newMessages.length,
     });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('AI chat API error:', error);
     return NextResponse.json(
       { error: 'Chat failed', detail: error instanceof Error ? error.message : 'Unknown error' },
@@ -121,6 +127,8 @@ export async function POST(request: NextRequest) {
 // GET endpoint to retrieve conversation history
 export async function GET(request: NextRequest) {
   try {
+    await requireUserApi();
+
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get('conversationId');
 
@@ -149,6 +157,9 @@ export async function GET(request: NextRequest) {
       updatedAt: conversation.updatedAt,
     });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('Conversation fetch error:', error);
     return NextResponse.json({ error: 'Failed to fetch conversation' }, { status: 500 });
   }

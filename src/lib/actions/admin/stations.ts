@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/db/prisma';
 import { requireRole } from '@/lib/auth/rbac';
+import { emitEvent, generateUniqueIdempotencyKey } from '@/lib/db/events';
+import { logAuditTrail } from '@/lib/db/audit';
 import { revalidatePath } from 'next/cache';
 import type { Prisma } from '@prisma/client';
 import type { StationType } from '@/lib/types/stations';
@@ -38,7 +40,7 @@ export async function createStation(data: {
   sequenceOrder: number;
   config?: Record<string, unknown>;
 }) {
-  await requireRole(['admin']);
+  const user = await requireRole(['admin']);
 
   const station = await prisma.station.create({
     data: {
@@ -49,6 +51,16 @@ export async function createStation(data: {
       config: (data.config ?? {}) as Prisma.InputJsonValue,
       active: true,
     },
+  });
+
+  await logAuditTrail(user.id, 'create', 'Station', station.id, null, { name: data.name, stationType: data.stationType });
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId: data.siteId,
+    operatorId: user.id,
+    payload: { action: 'station_created', stationId: station.id, name: data.name },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
   });
 
   revalidatePath('/admin/stations');
@@ -67,7 +79,7 @@ export async function updateStation(
     active?: boolean;
   }
 ) {
-  await requireRole(['admin']);
+  const user = await requireRole(['admin']);
 
   const existing = await prisma.station.findUnique({
     where: { id },
@@ -85,6 +97,16 @@ export async function updateStation(
     },
   });
 
+  await logAuditTrail(user.id, 'update', 'Station', id, { name: existing.name, stationType: existing.stationType, active: existing.active }, data);
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId: existing.siteId,
+    operatorId: user.id,
+    payload: { action: 'station_updated', stationId: id, changes: JSON.parse(JSON.stringify(data)) },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
   revalidatePath('/admin/stations');
   revalidatePath('/station');
 
@@ -92,7 +114,7 @@ export async function updateStation(
 }
 
 export async function deleteStation(id: string) {
-  await requireRole(['admin']);
+  const user = await requireRole(['admin']);
 
   const existing = await prisma.station.findUnique({
     where: { id },
@@ -128,12 +150,23 @@ export async function deleteStation(id: string) {
     });
   }
 
+  const action = totalUsage > 0 ? 'station_deactivated' : 'station_deleted';
+  await logAuditTrail(user.id, 'delete', 'Station', id, { name: existing.name, stationType: existing.stationType }, null);
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId: existing.siteId,
+    operatorId: user.id,
+    payload: { action, stationId: id, name: existing.name },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
   revalidatePath('/admin/stations');
   revalidatePath('/station');
 }
 
 export async function reorderStations(siteId: string, stationOrder: string[]) {
-  await requireRole(['admin']);
+  const user = await requireRole(['admin']);
 
   // Update each station with its new sequence order
   await prisma.$transaction(
@@ -144,6 +177,16 @@ export async function reorderStations(siteId: string, stationOrder: string[]) {
       })
     )
   );
+
+  await logAuditTrail(user.id, 'config_change', 'Station', siteId, null, { stationOrder });
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId,
+    operatorId: user.id,
+    payload: { action: 'stations_reordered', stationOrder },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
 
   revalidatePath('/admin/stations');
   revalidatePath('/station');

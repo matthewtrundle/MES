@@ -1,42 +1,55 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-// Public routes that don't require authentication
-const isPublicRoute = createRouteMatcher([
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/health(.*)',
-  '/api/ready(.*)',
-  '/api/webhook(.*)', // For ERP integration webhooks
-  '/', // Landing page
-]);
+// Skip Clerk entirely when publishable key is not configured (demo mode)
+const clerkEnabled =
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('REPLACE_ME');
 
-export default clerkMiddleware(async (auth, request) => {
-  // Allow public routes
-  if (isPublicRoute(request)) {
-    return NextResponse.next();
-  }
-
-  // Require authentication for all other routes
-  const { userId } = await auth();
-
-  if (!userId) {
-    // Redirect to sign-in if not authenticated
-    const signInUrl = new URL('/sign-in', request.url);
-    signInUrl.searchParams.set('redirect_url', request.url);
-    return NextResponse.redirect(signInUrl);
-  }
-
-  // Authentication passed - allow access
-  // Role-based authorization is handled at the page/action level via RBAC
+async function demoMiddleware(_request: NextRequest) {
+  // In demo mode, allow all routes without auth
   return NextResponse.next();
-});
+}
+
+async function clerkAuthMiddleware(request: NextRequest) {
+  // Dynamically import Clerk only when configured
+  const { clerkMiddleware, createRouteMatcher } = await import('@clerk/nextjs/server');
+
+  const isPublicRoute = createRouteMatcher([
+    '/sign-in(.*)',
+    '/sign-up(.*)',
+    '/api/health(.*)',
+    '/api/ready(.*)',
+    '/api/webhook(.*)',
+    '/api/simulation(.*)',
+    '/dashboard(.*)',
+    '/operator(.*)',
+    '/',
+  ]);
+
+  const middleware = clerkMiddleware(async (auth, req) => {
+    if (isPublicRoute(req)) {
+      return NextResponse.next();
+    }
+
+    const { userId } = await auth();
+    if (!userId) {
+      const signInUrl = new URL('/sign-in', req.url);
+      signInUrl.searchParams.set('redirect_url', req.url);
+      return NextResponse.redirect(signInUrl);
+    }
+
+    return NextResponse.next();
+  });
+
+  return middleware(request, {} as any);
+}
+
+export default clerkEnabled ? clerkAuthMiddleware : demoMiddleware;
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 };

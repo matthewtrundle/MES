@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { emitEvent, generateIdempotencyKey } from '@/lib/db/events';
 import { requireUser } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
+import { consumeMaterialSchema } from '@/lib/validation/schemas';
 
 /**
  * Get material lots available for consumption
@@ -13,8 +14,35 @@ export async function getAvailableMaterialLots(materialCode?: string) {
     where: {
       qtyRemaining: { gt: 0 },
       ...(materialCode && { materialCode }),
+      // Exclude expired lots
+      OR: [
+        { expiresAt: null },
+        { expiresAt: { gt: new Date() } },
+      ],
     },
     orderBy: [{ receivedAt: 'asc' }], // FIFO
+  });
+
+  return lots;
+}
+
+/**
+ * Get material lots expiring within a given number of days
+ */
+export async function getExpiringLots(withinDays: number = 7) {
+  const now = new Date();
+  const threshold = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+
+  const lots = await prisma.materialLot.findMany({
+    where: {
+      qtyRemaining: { gt: 0 },
+      expiresAt: {
+        not: null,
+        gt: now,
+        lte: threshold,
+      },
+    },
+    orderBy: [{ expiresAt: 'asc' }],
   });
 
   return lots;
@@ -51,6 +79,7 @@ export async function consumeMaterial(data: {
   qtyConsumed: number;
   stationId: string;
 }) {
+  consumeMaterialSchema.parse(data);
   const user = await requireUser();
 
   const unit = await prisma.unit.findUnique({
@@ -70,6 +99,10 @@ export async function consumeMaterial(data: {
 
   if (!lot) {
     throw new Error('Material lot not found');
+  }
+
+  if (lot.expiresAt && lot.expiresAt < new Date()) {
+    throw new Error(`Material lot ${lot.lotNumber} has expired (${lot.expiresAt.toISOString()})`);
   }
 
   if (lot.qtyRemaining < data.qtyConsumed) {

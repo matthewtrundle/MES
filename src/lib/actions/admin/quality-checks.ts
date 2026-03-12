@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/db/prisma';
 import { requireRole } from '@/lib/auth/rbac';
+import { emitEvent, generateUniqueIdempotencyKey } from '@/lib/db/events';
+import { logAuditTrail } from '@/lib/db/audit';
 import { revalidatePath } from 'next/cache';
 import type {
   CheckType,
@@ -9,6 +11,15 @@ import type {
   ChecklistParameters,
   PassFailParameters,
 } from '@/lib/types/quality-checks';
+
+async function getSiteIdFromStations(stationIds: string[]): Promise<string> {
+  if (stationIds.length === 0) {
+    const site = await prisma.site.findFirst({ where: { active: true }, select: { id: true } });
+    return site?.id ?? 'unknown';
+  }
+  const station = await prisma.station.findUnique({ where: { id: stationIds[0] }, select: { siteId: true } });
+  return station?.siteId ?? 'unknown';
+}
 
 export async function getQualityCheckDefinitions() {
   await requireRole(['admin']);
@@ -33,7 +44,7 @@ export async function createQualityCheckDefinition(data: {
   parameters: MeasurementParameters | ChecklistParameters | PassFailParameters;
   stationIds: string[];
 }) {
-  await requireRole(['admin']);
+  const user = await requireRole(['admin']);
 
   const definition = await prisma.qualityCheckDefinition.create({
     data: {
@@ -43,6 +54,17 @@ export async function createQualityCheckDefinition(data: {
       stationIds: data.stationIds,
       active: true,
     },
+  });
+
+  const siteId = await getSiteIdFromStations(data.stationIds);
+  await logAuditTrail(user.id, 'create', 'QualityCheckDefinition', definition.id, null, { name: data.name, checkType: data.checkType });
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId,
+    operatorId: user.id,
+    payload: { action: 'quality_check_created', definitionId: definition.id, name: data.name },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
   });
 
   revalidatePath('/admin/quality-checks');
@@ -61,7 +83,7 @@ export async function updateQualityCheckDefinition(
     active?: boolean;
   }
 ) {
-  await requireRole(['admin']);
+  const user = await requireRole(['admin']);
 
   const existing = await prisma.qualityCheckDefinition.findUnique({
     where: { id },
@@ -79,6 +101,17 @@ export async function updateQualityCheckDefinition(
     },
   });
 
+  const siteId = await getSiteIdFromStations(data.stationIds ?? existing.stationIds);
+  await logAuditTrail(user.id, 'update', 'QualityCheckDefinition', id, { name: existing.name, checkType: existing.checkType, active: existing.active }, { ...data, parameters: undefined });
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId,
+    operatorId: user.id,
+    payload: { action: 'quality_check_updated', definitionId: id, name: definition.name },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
   revalidatePath('/admin/quality-checks');
   revalidatePath('/station');
 
@@ -86,7 +119,7 @@ export async function updateQualityCheckDefinition(
 }
 
 export async function deleteQualityCheckDefinition(id: string) {
-  await requireRole(['admin']);
+  const user = await requireRole(['admin']);
 
   const existing = await prisma.qualityCheckDefinition.findUnique({
     where: { id },
@@ -114,6 +147,18 @@ export async function deleteQualityCheckDefinition(id: string) {
       where: { id },
     });
   }
+
+  const action = existing._count.results > 0 ? 'quality_check_deactivated' : 'quality_check_deleted';
+  const siteId = await getSiteIdFromStations(existing.stationIds);
+  await logAuditTrail(user.id, 'delete', 'QualityCheckDefinition', id, { name: existing.name, checkType: existing.checkType }, null);
+  await emitEvent({
+    eventType: 'config_changed',
+    siteId,
+    operatorId: user.id,
+    payload: { action, definitionId: id, name: existing.name },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
 
   revalidatePath('/admin/quality-checks');
   revalidatePath('/station');

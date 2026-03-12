@@ -1,188 +1,50 @@
-import { prisma } from '@/lib/db/prisma';
+import { requireRole } from '@/lib/auth/rbac';
+import {
+  getInventorySummary,
+  getLowStockMaterials,
+  getExpiringLots,
+} from '@/lib/actions/inventory';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import {
+  Package,
+  Layers,
+  AlertTriangle,
+  Clock,
+  TrendingDown,
+  BoxesIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
-import { InventoryCard, InventorySummary } from '@/components/supervisor/InventoryCard';
-
-async function getInventoryData() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Get 24 hours ago for consumption rate calculation
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-
-  const [materialLots, consumptionLast24h, consumptionByHour] = await Promise.all([
-    // All material lots with remaining quantity
-    prisma.materialLot.findMany({
-      where: {
-        qtyRemaining: { gt: 0 },
-      },
-      orderBy: { materialCode: 'asc' },
-    }),
-
-    // Consumption in last 24 hours grouped by material
-    prisma.unitMaterialConsumption.groupBy({
-      by: ['materialLotId'],
-      where: {
-        timestamp: { gte: yesterday },
-      },
-      _sum: {
-        qtyConsumed: true,
-      },
-    }),
-
-    // Hourly consumption for trend (last 8 hours)
-    prisma.unitMaterialConsumption.findMany({
-      where: {
-        timestamp: { gte: new Date(today.getTime() - 8 * 60 * 60 * 1000) },
-      },
-      select: {
-        timestamp: true,
-        qtyConsumed: true,
-        materialLotId: true,
-      },
-      orderBy: { timestamp: 'asc' },
-    }),
-  ]);
-
-  // Build consumption map by lot ID
-  const consumptionMap = new Map(
-    consumptionLast24h.map((c) => [c.materialLotId, c._sum.qtyConsumed ?? 0])
-  );
-
-  // Build lot ID to material code map
-  const lotCodeMap = new Map(
-    materialLots.map((lot) => [lot.id, lot.materialCode])
-  );
-
-  // Group by material code to aggregate multiple lots
-  const materialMap = new Map<
-    string,
-    {
-      materialCode: string;
-      description: string;
-      qtyRemaining: number;
-      qtyReceived: number;
-      lotCount: number;
-      consumption24h: number;
-      lotIds: string[];
-    }
-  >();
-
-  materialLots.forEach((lot) => {
-    const existing = materialMap.get(lot.materialCode);
-    const lotConsumption = consumptionMap.get(lot.id) ?? 0;
-
-    if (existing) {
-      existing.qtyRemaining += lot.qtyRemaining;
-      existing.qtyReceived += lot.qtyReceived;
-      existing.lotCount += 1;
-      existing.consumption24h += lotConsumption;
-      existing.lotIds.push(lot.id);
-    } else {
-      materialMap.set(lot.materialCode, {
-        materialCode: lot.materialCode,
-        description: lot.description ?? lot.materialCode,
-        qtyRemaining: lot.qtyRemaining,
-        qtyReceived: lot.qtyReceived,
-        lotCount: 1,
-        consumption24h: lotConsumption,
-        lotIds: [lot.id],
-      });
-    }
-  });
-
-  // Calculate consumption rate and runway
-  const materials = Array.from(materialMap.values()).map((material) => {
-    const consumptionRate = material.consumption24h / 24; // per hour
-    const runwayHours = consumptionRate > 0
-      ? material.qtyRemaining / consumptionRate
-      : null;
-
-    // Determine status based on runway hours
-    let status: 'good' | 'low' | 'critical' = 'good';
-    if (runwayHours !== null) {
-      if (runwayHours < 4) {
-        status = 'critical';
-      } else if (runwayHours < 12) {
-        status = 'low';
-      }
-    }
-
-    // Also check percentage remaining
-    const percentRemaining = (material.qtyRemaining / material.qtyReceived) * 100;
-    if (percentRemaining < 10) {
-      status = 'critical';
-    } else if (percentRemaining < 25 && status === 'good') {
-      status = 'low';
-    }
-
-    return {
-      ...material,
-      consumptionRate,
-      runwayHours,
-      status,
-    };
-  });
-
-  // Sort by status (critical first, then low, then good)
-  materials.sort((a, b) => {
-    const statusOrder = { critical: 0, low: 1, good: 2 };
-    return statusOrder[a.status] - statusOrder[b.status];
-  });
-
-  // Calculate hourly consumption trends by material code
-  const hourlyConsumption = new Map<string, number[]>();
-  const hours = 8;
-
-  for (let i = 0; i < hours; i++) {
-    const hourStart = new Date(today.getTime() - (hours - i) * 60 * 60 * 1000);
-    const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000);
-
-    consumptionByHour
-      .filter((c) => {
-        const timestamp = new Date(c.timestamp);
-        return timestamp >= hourStart && timestamp < hourEnd;
-      })
-      .forEach((c) => {
-        const materialCode = lotCodeMap.get(c.materialLotId);
-        if (materialCode) {
-          const existing = hourlyConsumption.get(materialCode) ?? new Array(hours).fill(0);
-          existing[i] += c.qtyConsumed;
-          hourlyConsumption.set(materialCode, existing);
-        }
-      });
-  }
-
-  // Calculate summary stats
-  const totalMaterials = materials.length;
-  const lowStockCount = materials.filter((m) => m.status === 'low').length;
-  const criticalCount = materials.filter((m) => m.status === 'critical').length;
-  const avgRunwayHours =
-    materials.reduce((sum, m) => sum + (m.runwayHours ?? 0), 0) /
-    Math.max(materials.filter((m) => m.runwayHours !== null).length, 1);
-
-  // Generate hour labels
-  const hourLabels = Array.from({ length: hours }, (_, i) => {
-    const hour = new Date(today.getTime() - (hours - 1 - i) * 60 * 60 * 1000);
-    return `${hour.getHours()}:00`;
-  });
-
-  return {
-    materials,
-    hourlyConsumption,
-    hourLabels,
-    summary: {
-      totalMaterials,
-      lowStockCount,
-      criticalCount,
-      avgRunwayHours,
-    },
-  };
-}
 
 export default async function InventoryPage() {
-  const data = await getInventoryData();
+  await requireRole(['admin', 'supervisor']);
+
+  const [summary, lowStock, expiringLots] = await Promise.all([
+    getInventorySummary(),
+    getLowStockMaterials(7),
+    getExpiringLots(14),
+  ]);
+
+  // Compute totals from summary
+  const totalMaterials = summary.length;
+  const totalOnHand = summary.reduce((sum, m) => sum + m.totalOnHand, 0);
+  const totalCommitted = summary.reduce((sum, m) => sum + m.committed, 0);
+  const totalAvailable = summary.reduce((sum, m) => sum + m.available, 0);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -201,11 +63,15 @@ export default async function InventoryPage() {
               <div className="h-6 w-px bg-gray-300" />
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-purple-100 p-2">
-                  <Icons.chart className="h-6 w-6 text-purple-600" />
+                  <Package className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Inventory Tracking</h1>
-                  <p className="text-sm text-gray-500">Material levels and consumption</p>
+                  <h1 className="text-xl font-bold text-gray-900">
+                    Inventory Dashboard
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    Material levels, low stock alerts, and expiring lots
+                  </p>
                 </div>
               </div>
             </div>
@@ -214,160 +80,280 @@ export default async function InventoryPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {/* Summary Cards */}
-        <InventorySummary
-          totalMaterials={data.summary.totalMaterials}
-          lowStockCount={data.summary.lowStockCount}
-          criticalCount={data.summary.criticalCount}
-          avgRunwayHours={data.summary.avgRunwayHours}
-        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Total Materials
+              </CardTitle>
+              <Package className="h-5 w-5 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-gray-900">
+                {totalMaterials}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Unique material codes</p>
+            </CardContent>
+          </Card>
 
-        {/* Critical Alerts */}
-        {data.summary.criticalCount > 0 && (
-          <div className="mb-6 rounded-lg border-2 border-red-300 bg-red-50 p-4">
-            <div className="flex items-start gap-3">
-              <Icons.warning className="mt-0.5 h-5 w-5 text-red-600" />
-              <div>
-                <h3 className="font-semibold text-red-800">
-                  Critical Stock Alert
-                </h3>
-                <p className="text-sm text-red-700 mt-1">
-                  {data.summary.criticalCount} material(s) have critically low stock levels.
-                  Review and reorder immediately.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Total On-Hand
+              </CardTitle>
+              <Layers className="h-5 w-5 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-gray-900">
+                {totalOnHand.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Quantity across all lots</p>
+            </CardContent>
+          </Card>
 
-        {/* Low Stock Warning */}
-        {data.summary.lowStockCount > 0 && data.summary.criticalCount === 0 && (
-          <div className="mb-6 rounded-lg border-2 border-amber-300 bg-amber-50 p-4">
-            <div className="flex items-start gap-3">
-              <Icons.warning className="mt-0.5 h-5 w-5 text-amber-600" />
-              <div>
-                <h3 className="font-semibold text-amber-800">
-                  Low Stock Warning
-                </h3>
-                <p className="text-sm text-amber-700 mt-1">
-                  {data.summary.lowStockCount} material(s) are running low.
-                  Consider reordering soon.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Total Committed
+              </CardTitle>
+              <BoxesIcon className="h-5 w-5 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-gray-900">
+                {totalCommitted.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Reserved in kits</p>
+            </CardContent>
+          </Card>
 
-        {/* Inventory Grid */}
-        {data.materials.length === 0 ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-            <Icons.chart className="mx-auto h-12 w-12 text-gray-300" />
-            <p className="mt-4 text-gray-500">No materials in inventory</p>
-            <p className="text-sm text-gray-400">Material lots will appear here once added</p>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {data.materials.map((material) => (
-              <InventoryCard
-                key={material.materialCode}
-                materialCode={material.materialCode}
-                description={material.description}
-                qtyRemaining={material.qtyRemaining}
-                qtyReceived={material.qtyReceived}
-                lotCount={material.lotCount}
-                consumptionRate={material.consumptionRate}
-                runwayHours={material.runwayHours}
-                status={material.status}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Consumption Trends Section */}
-        {data.materials.length > 0 && (
-          <div className="mt-8 rounded-lg border border-gray-200 bg-white">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <h3 className="font-semibold text-gray-900">
-                Consumption Rate (Last 8 Hours)
-              </h3>
-            </div>
-            <div className="p-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                {data.materials.slice(0, 6).map((material) => {
-                  const hourlyData = data.hourlyConsumption.get(material.materialCode) ?? [];
-                  return (
-                    <div
-                      key={`trend-${material.materialCode}`}
-                      className="rounded-lg border border-gray-100 p-3"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-gray-900">
-                          {material.materialCode}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {material.consumptionRate.toFixed(1)}/hr
-                        </span>
-                      </div>
-                      <div className="h-10">
-                        {hourlyData.length > 0 ? (
-                          <svg
-                            viewBox="0 0 200 40"
-                            preserveAspectRatio="none"
-                            className="w-full h-full"
-                          >
-                            {(() => {
-                              const max = Math.max(...hourlyData, 1);
-                              const points = hourlyData.map((value, index) => {
-                                const x = 4 + (index / Math.max(hourlyData.length - 1, 1)) * 192;
-                                const y = 36 - (value / max) * 32;
-                                return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-                              });
-                              return (
-                                <path
-                                  d={points.join(' ')}
-                                  fill="none"
-                                  stroke="#8B9A82"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              );
-                            })()}
-                          </svg>
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-xs text-gray-400">
-                            No consumption data
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-between text-[10px] text-gray-400">
-                        <span>{data.hourLabels[0]}</span>
-                        <span>{data.hourLabels[data.hourLabels.length - 1]}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Legend */}
-        <div className="mt-6 flex justify-center gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-green-500" />
-            <span className="text-gray-500">Good (&gt;12h runway)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-amber-500" />
-            <span className="text-gray-500">Low (4-12h runway)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-red-500" />
-            <span className="text-gray-500">Critical (&lt;4h runway)</span>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Total Available
+              </CardTitle>
+              <TrendingDown className="h-5 w-5 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-green-600 font-bold">
+                {totalAvailable.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">On-hand minus committed</p>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Inventory Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Inventory by Material
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summary.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                No materials in inventory
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Material Code</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">On-Hand</TableHead>
+                      <TableHead className="text-right">Committed</TableHead>
+                      <TableHead className="text-right">Available</TableHead>
+                      <TableHead className="text-right">Lots</TableHead>
+                      <TableHead className="text-right">Expiring</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {summary.map((item) => (
+                      <TableRow key={item.materialCode}>
+                        <TableCell className="font-mono font-medium">
+                          {item.materialCode}
+                        </TableCell>
+                        <TableCell className="text-gray-500">
+                          {item.description ?? '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.totalOnHand.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.committed.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {item.available.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.lotCount}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.expiringCount > 0 ? (
+                            <Badge variant="destructive">
+                              {item.expiringCount}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400">0</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Low Stock Alerts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Low Stock Alerts
+              {lowStock.length > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {lowStock.length}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {lowStock.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                No materials projected to run out within 7 days
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Material Code</TableHead>
+                      <TableHead className="text-right">Current On-Hand</TableHead>
+                      <TableHead className="text-right">Daily Rate</TableHead>
+                      <TableHead className="text-right">Days Remaining</TableHead>
+                      <TableHead>Urgency</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lowStock.map((item) => (
+                      <TableRow key={item.materialCode}>
+                        <TableCell className="font-mono font-medium">
+                          {item.materialCode}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.currentOnHand.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.dailyConsumptionRate}/day
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {item.daysRemaining}
+                        </TableCell>
+                        <TableCell>
+                          {item.daysRemaining <= 2 ? (
+                            <Badge variant="destructive">Critical</Badge>
+                          ) : item.daysRemaining <= 5 ? (
+                            <Badge className="bg-amber-500 text-white border-transparent">
+                              Warning
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">Low</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Expiring Lots */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-500" />
+              Expiring Lots (Next 14 Days)
+              {expiringLots.length > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {expiringLots.length}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {expiringLots.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                No lots expiring within 14 days
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Lot Number</TableHead>
+                      <TableHead>Material Code</TableHead>
+                      <TableHead className="text-right">Qty Remaining</TableHead>
+                      <TableHead>Expiry Date</TableHead>
+                      <TableHead>Time Left</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {expiringLots.map((lot) => {
+                      const daysUntilExpiry = lot.expiresAt
+                        ? Math.ceil(
+                            (new Date(lot.expiresAt).getTime() - Date.now()) /
+                              (1000 * 60 * 60 * 24)
+                          )
+                        : null;
+
+                      return (
+                        <TableRow key={lot.id}>
+                          <TableCell className="font-mono font-medium">
+                            {lot.lotNumber}
+                          </TableCell>
+                          <TableCell>{lot.materialCode}</TableCell>
+                          <TableCell className="text-right">
+                            {lot.qtyRemaining.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            {lot.expiresAt
+                              ? new Date(lot.expiresAt).toLocaleDateString()
+                              : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {daysUntilExpiry !== null ? (
+                              daysUntilExpiry <= 3 ? (
+                                <Badge variant="destructive">
+                                  {daysUntilExpiry}d
+                                </Badge>
+                              ) : daysUntilExpiry <= 7 ? (
+                                <Badge className="bg-amber-500 text-white border-transparent">
+                                  {daysUntilExpiry}d
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">{daysUntilExpiry}d</Badge>
+                              )
+                            ) : (
+                              '-'
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

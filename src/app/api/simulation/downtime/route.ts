@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { requireRoleApi, HttpError } from '@/lib/auth/rbac';
 
 export async function POST() {
   try {
+    await requireRoleApi(['admin']);
+
     // Get random station, reason, and operator
     const [stations, downtimeReasons, operators, site] = await Promise.all([
       prisma.station.findMany(),
@@ -66,6 +69,9 @@ export async function POST() {
       downtimeId: downtime.id,
     });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('Failed to trigger downtime:', error);
     return NextResponse.json(
       { error: 'Failed to trigger downtime' },
@@ -77,6 +83,8 @@ export async function POST() {
 // Clear a specific downtime or all active downtimes
 export async function DELETE(request: Request) {
   try {
+    await requireRoleApi(['admin']);
+
     const { searchParams } = new URL(request.url);
     const downtimeId = searchParams.get('id');
     const site = await prisma.site.findFirst();
@@ -138,6 +146,9 @@ export async function DELETE(request: Request) {
       });
     }
   } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('Failed to clear downtime:', error);
     return NextResponse.json(
       { error: 'Failed to clear downtime' },

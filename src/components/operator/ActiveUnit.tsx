@@ -7,6 +7,8 @@ import { completeOperation } from '@/lib/actions/units';
 import { useRouter } from 'next/navigation';
 import { QualityCheckDialog } from './QualityCheckDialog';
 import { MaterialConsumptionDialog } from './MaterialConsumptionDialog';
+import { StationBomChecklist } from './StationBomChecklist';
+import { PreviousStationsHistory } from './PreviousStationsHistory';
 import { Icons, StatusIndicator, UnitStatusBadge } from '@/components/icons';
 
 type UnitWithDetails = Unit & {
@@ -17,14 +19,33 @@ type UnitWithDetails = Unit & {
   })[];
 };
 
+interface BomItem {
+  materialCode: string;
+  description: string | null;
+  qtyPerUnit: number;
+  unitOfMeasure: string;
+}
+
+interface PreviousExecution {
+  id: string;
+  stationName: string;
+  sequence: number;
+  result: string | null;
+  cycleTimeMinutes: number | null;
+  completedAt: string | null;
+  operatorName: string;
+}
+
 interface ActiveUnitProps {
   unit: UnitWithDetails;
   stationId: string;
   qualityChecks: QualityCheckDefinition[];
   disabled?: boolean;
+  bomItems?: BomItem[];
+  previousExecutions?: PreviousExecution[];
 }
 
-export function ActiveUnit({ unit, stationId, qualityChecks, disabled }: ActiveUnitProps) {
+export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems = [], previousExecutions = [] }: ActiveUnitProps) {
   const [isPending, startTransition] = useTransition();
   const [showQuality, setShowQuality] = useState(false);
   const [showMaterial, setShowMaterial] = useState(false);
@@ -139,6 +160,12 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled }: ActiveU
                   </div>
                 )}
               </div>
+
+              {/* BOM Materials Checklist */}
+              <StationBomChecklist items={bomItems} />
+
+              {/* Previous Station Results */}
+              <PreviousStationsHistory executions={previousExecutions} />
 
               {/* Error Message */}
               {error && (

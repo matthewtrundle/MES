@@ -1,10 +1,19 @@
 import Link from 'next/link';
-import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
+const clerkEnabled =
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('REPLACE_ME');
+
 export default async function HomePage() {
+  // Demo mode: redirect to dashboard
+  if (!clerkEnabled) {
+    redirect('/dashboard');
+  }
+
+  const { auth } = await import('@clerk/nextjs/server');
   const { userId, sessionClaims } = await auth();
 
   // If not logged in, show welcome page

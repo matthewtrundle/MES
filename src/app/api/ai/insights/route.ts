@@ -7,9 +7,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { requireUserApi, HttpError } from '@/lib/auth/rbac';
 
 export async function GET(request: NextRequest) {
   try {
+    await requireUserApi();
+
     const { searchParams } = new URL(request.url);
     const severity = searchParams.get('severity');
     const acknowledged = searchParams.get('acknowledged');
@@ -71,6 +74,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('Insights fetch error:', error);
     return NextResponse.json({ error: 'Failed to fetch insights' }, { status: 500 });
   }
@@ -78,6 +84,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireUserApi();
+
     const body = await request.json();
     const { insightId, action } = body;
 
@@ -125,6 +133,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('Insight action error:', error);
     return NextResponse.json({ error: 'Action failed' }, { status: 500 });
   }

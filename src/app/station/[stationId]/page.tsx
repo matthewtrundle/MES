@@ -8,6 +8,7 @@ import { WorkOrderList } from '@/components/operator/WorkOrderList';
 import { ActiveUnit } from '@/components/operator/ActiveUnit';
 import { DowntimePanel } from '@/components/operator/DowntimePanel';
 import { Icons } from '@/components/icons';
+import { getBomForStation } from '@/lib/actions/bom';
 
 interface StationPageProps {
   params: Promise<{ stationId: string }>;
@@ -108,6 +109,60 @@ export default async function StationPage({ params }: StationPageProps) {
     },
   });
 
+  // Get BOM items for each active work order's routing at this station
+  const bomItemsByWorkOrder: Record<string, { materialCode: string; description: string | null; qtyPerUnit: number; unitOfMeasure: string }[]> = {};
+  const routingIds = new Set(
+    workOrders.map((wo) => wo.routingId).filter((id): id is string => id != null)
+  );
+  for (const routingId of routingIds) {
+    const items = await getBomForStation(routingId, stationId);
+    // Map BOM items by routing, keyed by work order ID for easy lookup
+    const matchingWOs = workOrders.filter((wo) => wo.routingId === routingId);
+    for (const wo of matchingWOs) {
+      bomItemsByWorkOrder[wo.id] = items.map((item) => ({
+        materialCode: item.materialCode,
+        description: item.description,
+        qtyPerUnit: item.qtyPerUnit,
+        unitOfMeasure: item.unitOfMeasure,
+      }));
+    }
+  }
+
+  // Get previous station executions for active units
+  const previousExecutionsByUnit: Record<string, {
+    id: string;
+    stationName: string;
+    sequence: number;
+    result: string | null;
+    cycleTimeMinutes: number | null;
+    completedAt: string | null;
+    operatorName: string;
+  }[]> = {};
+  for (const unit of activeUnits) {
+    const prevExecs = await prisma.unitOperationExecution.findMany({
+      where: {
+        unitId: unit.id,
+        stationId: { not: stationId },
+        completedAt: { not: null },
+      },
+      include: {
+        operation: true,
+        station: { select: { name: true } },
+        operator: { select: { name: true } },
+      },
+      orderBy: { completedAt: 'asc' },
+    });
+    previousExecutionsByUnit[unit.id] = prevExecs.map((exec) => ({
+      id: exec.id,
+      stationName: exec.station.name,
+      sequence: exec.operation.sequence,
+      result: exec.result,
+      cycleTimeMinutes: exec.cycleTimeMinutes,
+      completedAt: exec.completedAt?.toISOString() ?? null,
+      operatorName: exec.operator.name,
+    }));
+  }
+
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Station Header */}
@@ -163,6 +218,8 @@ export default async function StationPage({ params }: StationPageProps) {
                   stationId={stationId}
                   qualityChecks={qualityChecks}
                   disabled={!!activeDowntime}
+                  bomItems={bomItemsByWorkOrder[unit.workOrderId] ?? []}
+                  previousExecutions={previousExecutionsByUnit[unit.id] ?? []}
                 />
               ))
             )}

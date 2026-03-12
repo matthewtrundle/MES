@@ -7,9 +7,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { analyzeProduction, isAIEnabled } from '@/lib/ai';
+import { requireRoleApi, HttpError } from '@/lib/auth/rbac';
 
 export async function POST() {
   try {
+    await requireRoleApi(['admin', 'supervisor']);
+
     // Check if AI is enabled
     if (!isAIEnabled()) {
       return NextResponse.json(
@@ -43,6 +46,9 @@ export async function POST() {
       insights: result.insights,
     });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('AI analysis API error:', error);
     return NextResponse.json(
       { error: 'Analysis failed', detail: error instanceof Error ? error.message : 'Unknown error' },

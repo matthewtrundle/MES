@@ -1,9 +1,11 @@
 'use server';
 
 import { prisma } from '@/lib/db/prisma';
-import { emitEvent, generateIdempotencyKey } from '@/lib/db/events';
+import { emitEvent, generateIdempotencyKey, generateUniqueIdempotencyKey } from '@/lib/db/events';
 import { requireRole } from '@/lib/auth/rbac';
+import { logAuditTrail } from '@/lib/db/audit';
 import { revalidatePath } from 'next/cache';
+import { createWorkOrderSchema, cancelWorkOrderSchema } from '@/lib/validation/schemas';
 
 /**
  * Get all work orders for a site with optional status filter
@@ -220,6 +222,67 @@ export async function getStationWorkOrders(stationId: string) {
 }
 
 /**
+ * Cancel a work order
+ * Only admins and supervisors can cancel work orders
+ * Only pending or released work orders can be cancelled
+ */
+export async function cancelWorkOrder(workOrderId: string, reason: string) {
+  const validated = cancelWorkOrderSchema.parse({ workOrderId, reason });
+  const user = await requireRole(['admin', 'supervisor']);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: validated.workOrderId },
+  });
+
+  if (!workOrder) {
+    throw new Error('Work order not found');
+  }
+
+  if (workOrder.status !== 'pending' && workOrder.status !== 'released') {
+    throw new Error(
+      `Cannot cancel work order in ${workOrder.status} status. Only pending or released work orders can be cancelled.`
+    );
+  }
+
+  const updatedWorkOrder = await prisma.workOrder.update({
+    where: { id: validated.workOrderId },
+    data: {
+      status: 'cancelled',
+    },
+  });
+
+  await logAuditTrail(
+    user.id,
+    'update',
+    'WorkOrder',
+    validated.workOrderId,
+    { status: workOrder.status },
+    { status: 'cancelled', cancellationReason: validated.reason }
+  );
+
+  await emitEvent({
+    eventType: 'work_order_cancelled',
+    siteId: workOrder.siteId,
+    workOrderId: workOrder.id,
+    operatorId: user.id,
+    payload: {
+      orderNumber: workOrder.orderNumber,
+      productCode: workOrder.productCode,
+      previousStatus: workOrder.status,
+      reason: validated.reason,
+    },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
+  revalidatePath('/admin/work-orders');
+  revalidatePath('/dashboard');
+  revalidatePath('/station');
+
+  return updatedWorkOrder;
+}
+
+/**
  * Create a new work order (for admin import)
  */
 export async function createWorkOrder(data: {
@@ -232,6 +295,7 @@ export async function createWorkOrder(data: {
   priority?: number;
   dueDate?: Date;
 }) {
+  createWorkOrderSchema.parse(data);
   const user = await requireRole(['admin']);
 
   // Check for duplicate order number

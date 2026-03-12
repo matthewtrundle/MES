@@ -1,6 +1,9 @@
-import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { UserWithSites } from '@/lib/auth/rbac';
+
+const clerkEnabled =
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('REPLACE_ME');
 
 interface AdminHeaderProps {
   user: UserWithSites;
@@ -29,8 +32,19 @@ export function AdminHeader({ user }: AdminHeaderProps) {
           <p className="text-sm font-medium text-slate-900">{user.name}</p>
           <p className="text-xs text-slate-500 capitalize">{user.role}</p>
         </div>
-        <UserButton afterSignOutUrl="/sign-in" />
+        {clerkEnabled ? (
+          <DynamicUserButton />
+        ) : (
+          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+            {user.name.split(' ').map(n => n[0]).join('')}
+          </div>
+        )}
       </div>
     </header>
   );
+}
+
+async function DynamicUserButton() {
+  const { UserButton } = await import('@clerk/nextjs');
+  return <UserButton afterSignOutUrl="/sign-in" />;
 }

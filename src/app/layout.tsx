@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { ClerkProvider, UserButton, SignedIn } from '@clerk/nextjs';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
@@ -19,33 +18,49 @@ export const metadata: Metadata = {
   description: 'Phase-1 Manufacturing Execution System for Motor Assembly',
 };
 
+const clerkEnabled =
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+  !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('REPLACE_ME');
+
+async function AuthWrapper({ children }: { children: React.ReactNode }) {
+  if (!clerkEnabled) {
+    return <>{children}</>;
+  }
+  const { ClerkProvider, UserButton, SignedIn } = await import('@clerk/nextjs');
+  return (
+    <ClerkProvider>
+      <SignedIn>
+        <div className="fixed top-4 right-4 z-50">
+          <UserButton
+            afterSignOutUrl="/sign-in"
+            appearance={{
+              elements: {
+                avatarBox: "w-10 h-10"
+              }
+            }}
+          />
+        </div>
+      </SignedIn>
+      {children}
+    </ClerkProvider>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
-        >
-          <SignedIn>
-            <div className="fixed top-4 right-4 z-50">
-              <UserButton
-                afterSignOutUrl="/sign-in"
-                appearance={{
-                  elements: {
-                    avatarBox: "w-10 h-10"
-                  }
-                }}
-              />
-            </div>
-          </SignedIn>
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
+      >
+        <AuthWrapper>
           {children}
-          <Toaster position="top-right" />
-        </body>
-      </html>
-    </ClerkProvider>
+        </AuthWrapper>
+        <Toaster position="top-right" />
+      </body>
+    </html>
   );
 }
