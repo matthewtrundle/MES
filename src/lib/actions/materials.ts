@@ -71,7 +71,13 @@ export async function searchMaterialLot(lotNumber: string) {
 }
 
 /**
- * Record material consumption for a unit
+ * Record material consumption for a unit.
+ *
+ * Kitted-lot preference (Phase 3D): when the unit's work order has an issued
+ * kit with a matching materialCode line, we prefer consuming from that kit
+ * line's materialLotId first. This is a soft preference -- if the caller
+ * already picked the kitted lot we honour it; if they picked a different lot
+ * we still allow it (fall-through to normal FIFO).
  */
 export async function consumeMaterial(data: {
   unitId: string;
@@ -85,7 +91,15 @@ export async function consumeMaterial(data: {
   const unit = await prisma.unit.findUnique({
     where: { id: data.unitId },
     include: {
-      workOrder: true,
+      workOrder: {
+        include: {
+          kit: {
+            include: {
+              lines: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -93,9 +107,50 @@ export async function consumeMaterial(data: {
     throw new Error('Unit not found');
   }
 
-  const lot = await prisma.materialLot.findUnique({
+  // --- Kitted-lot preference ---------------------------------------------------
+  // Look up the lot the caller wants to consume so we know its materialCode.
+  let resolvedLotId = data.materialLotId;
+
+  const requestedLot = await prisma.materialLot.findUnique({
     where: { id: data.materialLotId },
   });
+
+  if (!requestedLot) {
+    throw new Error('Material lot not found');
+  }
+
+  const kit = unit.workOrder.kit;
+  if (kit && kit.status === 'issued') {
+    // Find a kit line that matches the material code and has a picked lot
+    const matchingKitLine = kit.lines.find(
+      (line) =>
+        line.materialCode === requestedLot.materialCode &&
+        line.materialLotId !== null
+    );
+
+    if (matchingKitLine && matchingKitLine.materialLotId !== resolvedLotId) {
+      // Check if the kitted lot has enough quantity
+      const kittedLot = await prisma.materialLot.findUnique({
+        where: { id: matchingKitLine.materialLotId! },
+      });
+
+      if (
+        kittedLot &&
+        kittedLot.qtyRemaining >= data.qtyConsumed &&
+        (!kittedLot.expiresAt || kittedLot.expiresAt >= new Date())
+      ) {
+        // Prefer the kitted lot
+        resolvedLotId = kittedLot.id;
+      }
+      // Otherwise fall through to the caller's original lot selection
+    }
+  }
+
+  // Re-fetch the lot we will actually consume (may have changed due to kit preference)
+  const lot =
+    resolvedLotId === data.materialLotId
+      ? requestedLot
+      : await prisma.materialLot.findUnique({ where: { id: resolvedLotId } });
 
   if (!lot) {
     throw new Error('Material lot not found');

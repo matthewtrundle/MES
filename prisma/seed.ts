@@ -50,6 +50,7 @@ async function main() {
   await prisma.qualityCheckDefinition.deleteMany();
   await prisma.routing.deleteMany();
   await prisma.downtimeReason.deleteMany();
+  await prisma.shift.deleteMany();
   await prisma.station.deleteMany();
   await prisma.user.deleteMany();
   await prisma.site.deleteMany();
@@ -566,6 +567,38 @@ async function main() {
     }),
   ]);
 
+  // Create Shifts
+  console.log('Creating shifts...');
+  const shifts = await Promise.all([
+    prisma.shift.create({
+      data: {
+        siteId: site.id,
+        name: 'Day Shift',
+        startTime: '06:00',
+        endTime: '14:00',
+        active: true,
+      },
+    }),
+    prisma.shift.create({
+      data: {
+        siteId: site.id,
+        name: 'Swing Shift',
+        startTime: '14:00',
+        endTime: '22:00',
+        active: true,
+      },
+    }),
+    prisma.shift.create({
+      data: {
+        siteId: site.id,
+        name: 'Night Shift',
+        startTime: '22:00',
+        endTime: '06:00',
+        active: true,
+      },
+    }),
+  ]);
+
   // Create initial event for work order release
   console.log('Creating initial events...');
   await prisma.event.create({
@@ -591,6 +624,7 @@ async function main() {
   console.log(`   - Quality Checks: ${qualityChecks.length}`);
   console.log(`   - Material Lots: ${materialLots.length}`);
   console.log(`   - Users: ${users.length}`);
+  console.log(`   - Shifts: ${shifts.length}`);
   console.log(`   - Work Order: ${workOrder.orderNumber} (${workOrder.qtyOrdered} units)`);
   console.log('\n🚀 Ready for demo!');
 }

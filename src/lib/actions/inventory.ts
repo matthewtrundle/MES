@@ -90,6 +90,22 @@ export async function getInventorySummary() {
 }
 
 /**
+ * Get all material lots with remaining quantity (for individual lot management)
+ */
+export async function getAllLots() {
+  await requireRole(['admin', 'supervisor']);
+
+  const lots = await prisma.materialLot.findMany({
+    where: {
+      qtyRemaining: { gt: 0 },
+    },
+    orderBy: [{ materialCode: 'asc' }, { receivedAt: 'asc' }],
+  });
+
+  return lots;
+}
+
+/**
  * Get materials with low stock based on consumption rate
  */
 export async function getLowStockMaterials(thresholdDays: number = 14) {

@@ -1,11 +1,17 @@
 import { prisma } from '@/lib/db/prisma';
 import { requireUser } from '@/lib/auth/rbac';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export default async function StationSelectionPage() {
   const user = await requireUser();
+
+  // If user has an assigned station, auto-redirect to it
+  if (user.assignedStationId) {
+    redirect(`/station/${user.assignedStationId}`);
+  }
 
   // Get all active stations (simplified - show all stations for demo)
   const stations = await prisma.station.findMany({

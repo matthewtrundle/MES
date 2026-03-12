@@ -3,6 +3,7 @@ import {
   getInventorySummary,
   getLowStockMaterials,
   getExpiringLots,
+  getAllLots,
 } from '@/lib/actions/inventory';
 import {
   Card,
@@ -30,14 +31,16 @@ import {
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
+import { InventoryAdjustButton } from '@/components/admin/InventoryAdjustButton';
 
 export default async function InventoryPage() {
   await requireRole(['admin', 'supervisor']);
 
-  const [summary, lowStock, expiringLots] = await Promise.all([
+  const [summary, lowStock, expiringLots, allLots] = await Promise.all([
     getInventorySummary(),
     getLowStockMaterials(7),
     getExpiringLots(14),
+    getAllLots(),
   ]);
 
   // Compute totals from summary
@@ -303,6 +306,7 @@ export default async function InventoryPage() {
                       <TableHead className="text-right">Qty Remaining</TableHead>
                       <TableHead>Expiry Date</TableHead>
                       <TableHead>Time Left</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -345,9 +349,92 @@ export default async function InventoryPage() {
                               '-'
                             )}
                           </TableCell>
+                          <TableCell className="text-right">
+                            <InventoryAdjustButton
+                              lotId={lot.id}
+                              currentQty={lot.qtyRemaining}
+                              materialCode={lot.materialCode}
+                              lotNumber={lot.lotNumber}
+                            />
+                          </TableCell>
                         </TableRow>
                       );
                     })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        {/* All Lots (with Adjust) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-blue-500" />
+              All Lots
+              <Badge variant="outline" className="ml-2">
+                {allLots.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {allLots.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                No lots in inventory
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Lot Number</TableHead>
+                      <TableHead>Material Code</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Qty Remaining</TableHead>
+                      <TableHead>Received</TableHead>
+                      <TableHead>Expires</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allLots.map((lot) => (
+                      <TableRow key={lot.id}>
+                        <TableCell className="font-mono font-medium">
+                          {lot.lotNumber}
+                        </TableCell>
+                        <TableCell>{lot.materialCode}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              lot.status === 'available'
+                                ? 'outline'
+                                : 'secondary'
+                            }
+                          >
+                            {lot.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {lot.qtyRemaining.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-gray-500">
+                          {new Date(lot.receivedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-gray-500">
+                          {lot.expiresAt
+                            ? new Date(lot.expiresAt).toLocaleDateString()
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <InventoryAdjustButton
+                            lotId={lot.id}
+                            currentQty={lot.qtyRemaining}
+                            materialCode={lot.materialCode}
+                            lotNumber={lot.lotNumber}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>

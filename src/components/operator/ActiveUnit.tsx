@@ -257,6 +257,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
         onOpenChange={setShowMaterial}
         unitId={unit.id}
         stationId={stationId}
+        bomItems={bomItems}
       />
     </>
   );

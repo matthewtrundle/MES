@@ -56,6 +56,7 @@ model Site {
   users           User[]           @relation("UserSites")
   aiInsights      AIInsight[]
   aiConversations AIConversation[]
+  shifts          Shift[]
 
   @@map("sites")
 }
@@ -79,6 +80,7 @@ model Station {
   ncrs                 NonconformanceRecord[]
   aiInsights           AIInsight[]
   bomItems             BillOfMaterial[]
+  assignedUsers        User[]                    @relation("AssignedStation")
 
   @@index([siteId])
   @@map("stations")
@@ -164,15 +166,17 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  clerkId   String   @unique @map("clerk_id")
-  email     String   @unique
-  name      String
-  role      Role     @default(operator)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  clerkId           String   @unique @map("clerk_id")
+  email             String   @unique
+  name              String
+  role              Role     @default(operator)
+  assignedStationId String?  @map("assigned_station_id")
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
+  assignedStation      Station?                  @relation("AssignedStation", fields: [assignedStationId], references: [id])
   sites                Site[]                    @relation("UserSites")
   unitExecutions       UnitOperationExecution[]
   downtimeIntervals    DowntimeInterval[]
@@ -504,4 +508,23 @@ model AIConversation {
 
   @@index([userId, updatedAt])
   @@map("ai_conversations")
+}
+
+// =============================================================================
+// SHIFT MANAGEMENT
+// =============================================================================
+
+model Shift {
+  id        String   @id @default(uuid())
+  siteId    String   @map("site_id")
+  name      String   // e.g., "Day Shift", "Night Shift"
+  startTime String   @map("start_time") // e.g., "06:00" (24h format)
+  endTime   String   @map("end_time")   // e.g., "14:00"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@map("shifts")
 }
