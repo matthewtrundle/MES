@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { UserWithSites } from '@/lib/auth/rbac';
+import { NotificationBell } from '@/components/ui/NotificationBell';
 
 const clerkEnabled =
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
@@ -28,6 +29,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        <NotificationBell />
         <div className="text-right mr-2">
           <p className="text-sm font-medium text-slate-900">{user.name}</p>
           <p className="text-xs text-slate-500 capitalize">{user.role}</p>
