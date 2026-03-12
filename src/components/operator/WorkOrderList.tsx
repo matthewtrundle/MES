@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { WorkOrder, Unit, WorkOrderOperation } from '@prisma/client';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { CreateUnitDialog } from './CreateUnitDialog';
 import { Icons } from '@/components/icons';
 
 type WorkOrderWithDetails = WorkOrder & {
   units: Unit[];
   operations: WorkOrderOperation[];
+  kit?: { status: string } | null;
 };
 
 interface WorkOrderListProps {
@@ -72,6 +74,19 @@ export function WorkOrderList({ workOrders, stationId, disabled }: WorkOrderList
                             <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700 uppercase">
                               Priority
                             </span>
+                          )}
+                          {wo.kit?.status === 'issued' && (
+                            <Badge className="bg-purple-500 text-[10px] px-1.5 py-0">Kit Issued</Badge>
+                          )}
+                          {wo.kit && wo.kit.status !== 'issued' && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-300">
+                              Kit: {wo.kit.status}
+                            </Badge>
+                          )}
+                          {!wo.kit && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-slate-400 border-slate-200">
+                              No Kit
+                            </Badge>
                           )}
                         </div>
                         <p className="text-sm text-slate-600 font-medium">{wo.productCode}</p>

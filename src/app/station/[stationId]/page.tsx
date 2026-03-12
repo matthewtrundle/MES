@@ -64,6 +64,9 @@ export default async function StationPage({ params }: StationPageProps) {
         where: { stationId },
         orderBy: { sequence: 'asc' },
       },
+      kit: {
+        select: { status: true },
+      },
     },
     orderBy: [{ priority: 'desc' }, { releasedAt: 'asc' }],
   });

@@ -81,7 +81,7 @@ export async function releaseWorkOrder(workOrderId: string) {
 
   const workOrder = await prisma.workOrder.findUnique({
     where: { id: workOrderId },
-    include: { routing: true },
+    include: { routing: true, kit: true },
   });
 
   if (!workOrder) {
@@ -91,6 +91,13 @@ export async function releaseWorkOrder(workOrderId: string) {
   if (workOrder.status !== 'pending') {
     throw new Error(`Cannot release work order in ${workOrder.status} status`);
   }
+
+  // Warn if kit is not issued (return warning info but don't block release)
+  const kitWarning = workOrder.kit
+    ? workOrder.kit.status !== 'issued'
+      ? `Kit exists but is in "${workOrder.kit.status}" status (not issued)`
+      : null
+    : 'No kit has been created for this work order';
 
   // Update work order status
   const updatedWorkOrder = await prisma.workOrder.update({
@@ -111,6 +118,7 @@ export async function releaseWorkOrder(workOrderId: string) {
       orderNumber: workOrder.orderNumber,
       productCode: workOrder.productCode,
       qtyOrdered: workOrder.qtyOrdered,
+      kitWarning,
     },
     source: 'ui',
     idempotencyKey: generateIdempotencyKey('work_order_released', workOrderId),
@@ -120,7 +128,7 @@ export async function releaseWorkOrder(workOrderId: string) {
   revalidatePath('/dashboard');
   revalidatePath('/station');
 
-  return updatedWorkOrder;
+  return { ...updatedWorkOrder, kitWarning };
 }
 
 /**
