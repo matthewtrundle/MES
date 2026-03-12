@@ -44,6 +44,13 @@ export function DashboardTabs() {
   // Secondary tabs (in "More" dropdown)
   const secondaryTabs: Tab[] = [
     { id: 'analytics', label: 'Pareto Analysis', href: '/dashboard/analytics', icon: 'chart' },
+    { id: 'spc', label: 'SPC Analytics', href: '/dashboard/spc', icon: 'measurement' },
+    { id: 'fpy', label: 'FPY Analysis', href: '/dashboard/fpy', icon: 'pass' },
+    { id: 'ncr-analytics', label: 'NCR Analytics', href: '/dashboard/ncr-analytics', icon: 'qualityFail' },
+    { id: 'supplier-quality', label: 'Supplier Quality', href: '/dashboard/supplier-quality', icon: 'gauge' },
+    { id: 'operator-productivity', label: 'Operator Productivity', href: '/dashboard/operator-productivity', icon: 'users' },
+    { id: 'production-history', label: 'Production History', href: '/dashboard/production-history', icon: 'history' },
+    { id: 'inventory-reports', label: 'Inventory Reports', href: '/dashboard/inventory-reports', icon: 'material' },
     { id: 'shift', label: 'Shift Report', href: '/dashboard/shift-report', icon: 'document' },
     { id: 'ai', label: 'AI Insights', href: '/dashboard/ai', icon: 'ai' },
     { id: 'quality', label: 'Quality', href: '/dashboard/quality', icon: 'qualityPass' },
