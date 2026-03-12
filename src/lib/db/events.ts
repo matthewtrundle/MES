@@ -50,6 +50,16 @@ export type EventType =
   | 'work_order_testing_started'
   | 'work_order_shipped'
   | 'work_order_status_changed'
+  // Procurement Events
+  | 'purchase_order_created'
+  | 'purchase_order_submitted'
+  | 'purchase_order_cancelled'
+  | 'purchase_order_received'
+  // IQC Events
+  | 'iqc_inspection_created'
+  | 'iqc_inspection_started'
+  | 'iqc_inspection_completed'
+  | 'iqc_disposition_recorded'
   // CTQ / IQC Events
   | 'ctq_measurement_recorded'
   // Step Data Capture Events

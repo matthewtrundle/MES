@@ -201,6 +201,9 @@ model User {
   ctqMeasurements         CTQMeasurement[]
   stepDataCaptures        StepDataCapture[]
   inventoryTransactions   InventoryTransaction[]  @relation("InventoryTransactions")
+  iqcInspections          IncomingInspection[]    @relation("IQCInspector")
+  iqcApprovals            IncomingInspection[]    @relation("IQCApprover")
+  iqcResults              IQCResult[]             @relation("IQCResultInspector")
 
   @@map("users")
 }
@@ -353,10 +356,14 @@ model MaterialLot {
   unitOfMeasure       String   @default("EA") @map("unit_of_measure")
   supplier            String?
   purchaseOrderNumber String?  @map("purchase_order_number")
-  status              String   @default("available") // available | quarantine | expired | depleted
+  status              String   @default("available") // available | quarantine | expired | depleted | pending_iqc
   receivedById        String?  @map("received_by_id")
   receivedAt          DateTime @default(now()) @map("received_at")
   expiresAt           DateTime? @map("expires_at")
+  carrier             String?
+  trackingNumber      String?  @map("tracking_number")
+  conditionNotes      String?  @map("condition_notes")
+  poLineItemId        String?  @map("po_line_item_id") // Link to PO line that was received
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
@@ -369,6 +376,8 @@ model MaterialLot {
   ctqMeasurements         CTQMeasurement[]
   inventoryTransactions   InventoryTransaction[]
   reservations            InventoryReservation[]
+  incomingInspections     IncomingInspection[]
+  ncrs                    NonconformanceRecord[]
 
   @@index([materialCode])
   @@index([status])
@@ -418,21 +427,37 @@ model QualityCheckResult {
 }
 
 model NonconformanceRecord {
-  id          String    @id @default(uuid())
-  unitId      String    @map("unit_id")
-  stationId   String    @map("station_id")
-  defectType  String    @map("defect_type")
-  description String?
-  disposition String?   // rework | scrap | use_as_is | defer
-  status      String    @default("open") // open | dispositioned | closed
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  closedAt    DateTime? @map("closed_at")
+  id                String    @id @default(uuid())
+  ncrNumber         String?   @unique @map("ncr_number") // Human-readable e.g., NCR-2026-0042
+  unitId            String?   @map("unit_id") // Nullable: can be unit-based OR lot-based
+  stationId         String?   @map("station_id") // Nullable: IQC NCRs don't have a station
+  materialLotId     String?   @map("material_lot_id") // For IQC NCRs
+  purchaseOrderId   String?   @map("purchase_order_id") // Link to originating PO
+  defectType        String    @map("defect_type")
+  description       String?
+  partNumber        String?   @map("part_number")
+  partRevision      String?   @map("part_revision")
+  affectedQty       Float?    @map("affected_qty")
+  failedDimensions  Json?     @map("failed_dimensions") // Array of { ctqId, measured, nominal, usl, lsl }
+  disposition       String?   // rework | scrap | use_as_is | defer
+  dispositionRationale String? @map("disposition_rationale")
+  correctiveAction  String?   @map("corrective_action")
+  responsibleParty  String?   @map("responsible_party")
+  actionDueDate     DateTime? @map("action_due_date")
+  supplierNotified  Boolean   @default(false) @map("supplier_notified")
+  supplierNotifiedAt DateTime? @map("supplier_notified_at")
+  status            String    @default("open") // open | dispositioned | closed
+  source            String    @default("production") // production | iqc
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  closedAt          DateTime? @map("closed_at")
 
-  unit    Unit    @relation(fields: [unitId], references: [id])
-  station Station @relation(fields: [stationId], references: [id])
+  unit        Unit?        @relation(fields: [unitId], references: [id])
+  station     Station?     @relation(fields: [stationId], references: [id])
+  materialLot MaterialLot? @relation(fields: [materialLotId], references: [id])
 
   @@index([unitId])
+  @@index([materialLotId])
   @@index([status])
   @@map("nonconformance_records")
 }
@@ -528,6 +553,7 @@ model CTQDefinition {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   measurements CTQMeasurement[]
+  iqcResults   IQCResult[]
 
   @@index([partNumber, revision])
   @@map("ctq_definitions")
@@ -678,8 +704,9 @@ model Supplier {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  parts        PartSupplier[]
-  materialLots MaterialLot[]
+  parts          PartSupplier[]
+  materialLots   MaterialLot[]
+  purchaseOrders PurchaseOrder[]
 
   @@map("suppliers")
 }
@@ -700,6 +727,111 @@ model PartSupplier {
 
   @@unique([partId, supplierId])
   @@map("part_suppliers")
+}
+
+// =============================================================================
+// PROCUREMENT & PURCHASE ORDERS
+// =============================================================================
+
+model PurchaseOrder {
+  id              String    @id @default(uuid())
+  poNumber        String    @unique @map("po_number") // e.g., PO-2026-0001
+  supplierId      String    @map("supplier_id")
+  buyerName       String    @map("buyer_name")
+  orderDate       DateTime  @default(now()) @map("order_date")
+  expectedDate    DateTime? @map("expected_date")
+  status          String    @default("draft") // draft | submitted | partially_received | fully_received | closed | cancelled
+  currency        String    @default("USD")
+  paymentTerms    String?   @map("payment_terms")
+  shippingMethod  String?   @map("shipping_method")
+  totalValue      Float?    @map("total_value")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  supplier  Supplier              @relation(fields: [supplierId], references: [id])
+  lineItems PurchaseOrderLineItem[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderDate])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLineItem {
+  id                String  @id @default(uuid())
+  purchaseOrderId   String  @map("purchase_order_id")
+  lineNumber        Int     @map("line_number")
+  partNumber        String  @map("part_number") // References PartMaster.partNumber
+  partRevision      String  @default("A") @map("part_revision")
+  supplierPartNumber String? @map("supplier_part_number")
+  description       String?
+  qtyOrdered        Float   @map("qty_ordered")
+  qtyReceived       Float   @default(0) @map("qty_received")
+  unitOfMeasure     String  @default("EA") @map("unit_of_measure")
+  unitCost          Float?  @map("unit_cost")
+  totalCost         Float?  @map("total_cost")
+  countryOfOrigin   String? @map("country_of_origin")
+  expectedLeadTimeDays Int? @map("expected_lead_time_days")
+  drawingUrl        String? @map("drawing_url") // URL/path to revision-controlled drawing
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@unique([purchaseOrderId, lineNumber])
+  @@index([partNumber])
+  @@map("purchase_order_line_items")
+}
+
+// =============================================================================
+// INCOMING QUALITY CONTROL (IQC)
+// =============================================================================
+
+model IncomingInspection {
+  id              String    @id @default(uuid())
+  materialLotId   String    @map("material_lot_id")
+  inspectorId     String?   @map("inspector_id")
+  status          String    @default("pending") // pending | in_progress | completed | rejected
+  overallResult   String?   @map("overall_result") // conforming | nonconforming_rework | nonconforming_uai | nonconforming_scrap
+  dispositionNotes String?  @map("disposition_notes")
+  approvedById    String?   @map("approved_by_id") // For UAI: engineer sign-off
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  materialLot  MaterialLot    @relation(fields: [materialLotId], references: [id])
+  inspector    User?          @relation("IQCInspector", fields: [inspectorId], references: [id])
+  approvedBy   User?          @relation("IQCApprover", fields: [approvedById], references: [id])
+  results      IQCResult[]
+
+  @@index([materialLotId])
+  @@index([status])
+  @@index([inspectorId])
+  @@map("incoming_inspections")
+}
+
+model IQCResult {
+  id              String   @id @default(uuid())
+  inspectionId    String   @map("inspection_id")
+  ctqDefinitionId String   @map("ctq_definition_id")
+  sampleNumber    Int      @map("sample_number")
+  measuredValue   Float    @map("measured_value")
+  result          String   // pass | fail
+  inspectorId     String   @map("inspector_id")
+  notes           String?
+  measuredAt      DateTime @default(now()) @map("measured_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  inspection    IncomingInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  ctqDefinition CTQDefinition     @relation(fields: [ctqDefinitionId], references: [id])
+  inspector     User               @relation("IQCResultInspector", fields: [inspectorId], references: [id])
+
+  @@index([inspectionId])
+  @@index([ctqDefinitionId])
+  @@map("iqc_results")
 }
 
 // =============================================================================
