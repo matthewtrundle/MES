@@ -131,6 +131,59 @@ export default async function StationPage({ params }: StationPageProps) {
     }
   }
 
+  // Get process step definitions for this station
+  const stepDefinitions = await prisma.processStepDefinition.findMany({
+    where: {
+      stationId,
+      active: true,
+    },
+    orderBy: [{ sequenceOrder: 'asc' }],
+  });
+
+  // Serialize step definitions for client component
+  const serializedStepDefs = stepDefinitions.map((sd) => ({
+    id: sd.id,
+    name: sd.name,
+    description: sd.description,
+    category: sd.category,
+    sequenceOrder: sd.sequenceOrder,
+    isMandatory: sd.isMandatory,
+    requiresSignoff: sd.requiresSignoff,
+    triggersQc: sd.triggersQc,
+    dataFields: sd.dataFields,
+  }));
+
+  // Get existing step data captures for active unit executions
+  const existingCapturesByUnit: Record<string, {
+    id: string;
+    stepDefinitionId: string;
+    capturedData: unknown;
+    signedOff: boolean;
+    signedOffAt: string | null;
+    operatorName: string;
+  }[]> = {};
+  if (stepDefinitions.length > 0) {
+    for (const unit of activeUnits) {
+      const activeExec = unit.executions[0];
+      if (activeExec) {
+        const captures = await prisma.stepDataCapture.findMany({
+          where: { executionId: activeExec.id },
+          include: {
+            operator: { select: { name: true } },
+          },
+        });
+        existingCapturesByUnit[unit.id] = captures.map((c) => ({
+          id: c.id,
+          stepDefinitionId: c.stepDefinitionId,
+          capturedData: c.capturedData,
+          signedOff: c.signedOff,
+          signedOffAt: c.signedOffAt?.toISOString() ?? null,
+          operatorName: c.operator.name,
+        }));
+      }
+    }
+  }
+
   // Get previous station executions for active units
   const previousExecutionsByUnit: Record<string, {
     id: string;
@@ -223,6 +276,8 @@ export default async function StationPage({ params }: StationPageProps) {
                   disabled={!!activeDowntime}
                   bomItems={bomItemsByWorkOrder[unit.workOrderId] ?? []}
                   previousExecutions={previousExecutionsByUnit[unit.id] ?? []}
+                  stepDefinitions={serializedStepDefs}
+                  existingCaptures={existingCapturesByUnit[unit.id] ?? []}
                 />
               ))
             )}

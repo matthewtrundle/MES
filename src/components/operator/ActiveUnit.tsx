@@ -9,6 +9,7 @@ import { QualityCheckDialog } from './QualityCheckDialog';
 import { MaterialConsumptionDialog } from './MaterialConsumptionDialog';
 import { StationBomChecklist } from './StationBomChecklist';
 import { PreviousStationsHistory } from './PreviousStationsHistory';
+import { StepDataCapturePanel } from './StepDataCapturePanel';
 import { Icons, StatusIndicator, UnitStatusBadge } from '@/components/icons';
 
 type UnitWithDetails = Unit & {
@@ -36,6 +37,27 @@ interface PreviousExecution {
   operatorName: string;
 }
 
+interface StepDefinitionForCapture {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  sequenceOrder: number;
+  isMandatory: boolean;
+  requiresSignoff: boolean;
+  triggersQc: boolean;
+  dataFields: unknown;
+}
+
+interface ExistingCaptureData {
+  id: string;
+  stepDefinitionId: string;
+  capturedData: unknown;
+  signedOff: boolean;
+  signedOffAt: string | null;
+  operatorName: string;
+}
+
 interface ActiveUnitProps {
   unit: UnitWithDetails;
   stationId: string;
@@ -43,9 +65,11 @@ interface ActiveUnitProps {
   disabled?: boolean;
   bomItems?: BomItem[];
   previousExecutions?: PreviousExecution[];
+  stepDefinitions?: StepDefinitionForCapture[];
+  existingCaptures?: ExistingCaptureData[];
 }
 
-export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems = [], previousExecutions = [] }: ActiveUnitProps) {
+export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems = [], previousExecutions = [], stepDefinitions = [], existingCaptures = [] }: ActiveUnitProps) {
   const [isPending, startTransition] = useTransition();
   const [showQuality, setShowQuality] = useState(false);
   const [showMaterial, setShowMaterial] = useState(false);
@@ -166,6 +190,16 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
 
               {/* Previous Station Results */}
               <PreviousStationsHistory executions={previousExecutions} />
+
+              {/* Step Data Capture */}
+              {stepDefinitions.length > 0 && activeExecution && (
+                <StepDataCapturePanel
+                  executionId={activeExecution.id}
+                  stepDefinitions={stepDefinitions}
+                  existingCaptures={existingCaptures}
+                  disabled={disabled}
+                />
+              )}
 
               {/* Error Message */}
               {error && (

@@ -6,6 +6,33 @@ import { requireRole } from '@/lib/auth/rbac';
 import { logAuditTrail } from '@/lib/db/audit';
 import { revalidatePath } from 'next/cache';
 import { createWorkOrderSchema, cancelWorkOrderSchema } from '@/lib/validation/schemas';
+import { reserveInventoryForWorkOrder, releaseReservation } from './inventory-reservation';
+
+/**
+ * P1.6: Valid work order status transitions
+ * draft -> pending -> released -> kitting -> in_progress -> in_testing -> completed -> shipped
+ * cancelled can be reached from any state
+ */
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  draft: ['pending', 'cancelled'],
+  pending: ['released', 'cancelled'],
+  released: ['kitting', 'in_progress', 'cancelled'],
+  kitting: ['in_progress', 'cancelled'],
+  in_progress: ['in_testing', 'completed', 'cancelled'],
+  in_testing: ['completed', 'in_progress', 'cancelled'],
+  completed: ['shipped', 'cancelled'],
+  shipped: ['cancelled'],
+  cancelled: [],
+};
+
+function validateStatusTransition(currentStatus: string, newStatus: string) {
+  const validNext = VALID_TRANSITIONS[currentStatus];
+  if (!validNext || !validNext.includes(newStatus)) {
+    throw new Error(
+      `Invalid status transition: cannot go from "${currentStatus}" to "${newStatus}"`
+    );
+  }
+}
 
 /**
  * Get all work orders for a site with optional status filter
@@ -88,9 +115,7 @@ export async function releaseWorkOrder(workOrderId: string) {
     throw new Error('Work order not found');
   }
 
-  if (workOrder.status !== 'pending') {
-    throw new Error(`Cannot release work order in ${workOrder.status} status`);
-  }
+  validateStatusTransition(workOrder.status, 'released');
 
   // Warn if kit is not issued (return warning info but don't block release)
   const kitWarning = workOrder.kit
@@ -108,6 +133,27 @@ export async function releaseWorkOrder(workOrderId: string) {
     },
   });
 
+  // P1.5: Auto-reserve inventory per BOM requirements
+  let reservationResult = null;
+  let inventoryWarning: string | null = null;
+  try {
+    if (workOrder.routingId) {
+      reservationResult = await reserveInventoryForWorkOrder(workOrderId);
+      if (reservationResult.hasShortages) {
+        inventoryWarning = `Inventory shortages detected for: ${reservationResult.shortages
+          .map(
+            (s) => `${s.materialCode} (short ${s.qtyShort})`
+          )
+          .join(', ')}`;
+      }
+    }
+  } catch (err) {
+    inventoryWarning =
+      err instanceof Error
+        ? `Failed to reserve inventory: ${err.message}`
+        : 'Failed to reserve inventory';
+  }
+
   // Emit event
   await emitEvent({
     eventType: 'work_order_released',
@@ -119,6 +165,7 @@ export async function releaseWorkOrder(workOrderId: string) {
       productCode: workOrder.productCode,
       qtyOrdered: workOrder.qtyOrdered,
       kitWarning,
+      inventoryWarning,
     },
     source: 'ui',
     idempotencyKey: generateIdempotencyKey('work_order_released', workOrderId),
@@ -128,7 +175,7 @@ export async function releaseWorkOrder(workOrderId: string) {
   revalidatePath('/dashboard');
   revalidatePath('/station');
 
-  return { ...updatedWorkOrder, kitWarning };
+  return { ...updatedWorkOrder, kitWarning, inventoryWarning, reservationResult };
 }
 
 /**
@@ -149,9 +196,7 @@ export async function completeWorkOrder(workOrderId: string) {
     throw new Error('Work order not found');
   }
 
-  if (workOrder.status !== 'in_progress' && workOrder.status !== 'released') {
-    throw new Error(`Cannot complete work order in ${workOrder.status} status`);
-  }
+  validateStatusTransition(workOrder.status, 'completed');
 
   const completedUnits = workOrder.units.filter((u) => u.status === 'completed').length;
 
@@ -200,7 +245,7 @@ export async function getStationWorkOrders(stationId: string) {
   const workOrders = await prisma.workOrder.findMany({
     where: {
       siteId: station.siteId,
-      status: { in: ['released', 'in_progress'] },
+      status: { in: ['released', 'kitting', 'in_progress', 'in_testing'] },
       operations: {
         some: {
           stationId: stationId,
@@ -246,11 +291,7 @@ export async function cancelWorkOrder(workOrderId: string, reason: string) {
     throw new Error('Work order not found');
   }
 
-  if (workOrder.status !== 'pending' && workOrder.status !== 'released') {
-    throw new Error(
-      `Cannot cancel work order in ${workOrder.status} status. Only pending or released work orders can be cancelled.`
-    );
-  }
+  validateStatusTransition(workOrder.status, 'cancelled');
 
   const updatedWorkOrder = await prisma.workOrder.update({
     where: { id: validated.workOrderId },
@@ -258,6 +299,14 @@ export async function cancelWorkOrder(workOrderId: string, reason: string) {
       status: 'cancelled',
     },
   });
+
+  // P1.5: Release any inventory reservations when cancelling
+  try {
+    await releaseReservation(validated.workOrderId);
+  } catch {
+    // Non-blocking - log but don't fail the cancellation
+    console.error('Failed to release reservations on cancel');
+  }
 
   await logAuditTrail(
     user.id,
@@ -302,6 +351,11 @@ export async function createWorkOrder(data: {
   routingId?: string;
   priority?: number;
   dueDate?: Date;
+  // P1.7: Customer fields
+  customerName?: string;
+  customerOrderRef?: string;
+  targetStartDate?: Date;
+  notes?: string;
 }) {
   createWorkOrderSchema.parse(data);
   const user = await requireRole(['admin']);
@@ -325,7 +379,13 @@ export async function createWorkOrder(data: {
       routingId: data.routingId,
       priority: data.priority ?? 0,
       dueDate: data.dueDate,
-      status: 'pending',
+      status: 'draft',
+      draftedAt: new Date(),
+      // P1.7: Customer fields
+      customerName: data.customerName,
+      customerOrderRef: data.customerOrderRef,
+      targetStartDate: data.targetStartDate,
+      notes: data.notes,
     },
   });
 
@@ -371,4 +431,273 @@ export async function createWorkOrder(data: {
   revalidatePath('/admin/work-orders');
 
   return workOrder;
+}
+
+/**
+ * P1.6: Submit a draft work order (draft -> pending)
+ */
+export async function submitWorkOrder(workOrderId: string) {
+  const user = await requireRole(['admin', 'supervisor']);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+  });
+
+  if (!workOrder) {
+    throw new Error('Work order not found');
+  }
+
+  validateStatusTransition(workOrder.status, 'pending');
+
+  const updatedWorkOrder = await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: { status: 'pending' },
+  });
+
+  await emitEvent({
+    eventType: 'work_order_status_changed',
+    siteId: workOrder.siteId,
+    workOrderId: workOrder.id,
+    operatorId: user.id,
+    payload: {
+      orderNumber: workOrder.orderNumber,
+      previousStatus: 'draft',
+      newStatus: 'pending',
+    },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
+  revalidatePath('/admin/work-orders');
+  revalidatePath('/dashboard');
+
+  return updatedWorkOrder;
+}
+
+/**
+ * P1.6: Start kitting for a work order (released -> kitting)
+ */
+export async function startKitting(workOrderId: string) {
+  const user = await requireRole(['admin', 'supervisor']);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+  });
+
+  if (!workOrder) {
+    throw new Error('Work order not found');
+  }
+
+  validateStatusTransition(workOrder.status, 'kitting');
+
+  const updatedWorkOrder = await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: {
+      status: 'kitting',
+      kittingStartedAt: new Date(),
+    },
+  });
+
+  await emitEvent({
+    eventType: 'work_order_kitting_started',
+    siteId: workOrder.siteId,
+    workOrderId: workOrder.id,
+    operatorId: user.id,
+    payload: {
+      orderNumber: workOrder.orderNumber,
+      previousStatus: workOrder.status,
+    },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
+  revalidatePath('/admin/work-orders');
+  revalidatePath('/dashboard');
+
+  return updatedWorkOrder;
+}
+
+/**
+ * P1.6: Move work order to in_progress
+ */
+export async function startProduction(workOrderId: string) {
+  const user = await requireRole(['admin', 'supervisor']);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+  });
+
+  if (!workOrder) {
+    throw new Error('Work order not found');
+  }
+
+  validateStatusTransition(workOrder.status, 'in_progress');
+
+  const updatedWorkOrder = await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: { status: 'in_progress' },
+  });
+
+  await emitEvent({
+    eventType: 'work_order_status_changed',
+    siteId: workOrder.siteId,
+    workOrderId: workOrder.id,
+    operatorId: user.id,
+    payload: {
+      orderNumber: workOrder.orderNumber,
+      previousStatus: workOrder.status,
+      newStatus: 'in_progress',
+    },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
+  revalidatePath('/admin/work-orders');
+  revalidatePath('/dashboard');
+  revalidatePath('/station');
+
+  return updatedWorkOrder;
+}
+
+/**
+ * P1.6: Move work order to in_testing
+ */
+export async function startTesting(workOrderId: string) {
+  const user = await requireRole(['admin', 'supervisor']);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+  });
+
+  if (!workOrder) {
+    throw new Error('Work order not found');
+  }
+
+  validateStatusTransition(workOrder.status, 'in_testing');
+
+  const updatedWorkOrder = await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: {
+      status: 'in_testing',
+      testingStartedAt: new Date(),
+    },
+  });
+
+  await emitEvent({
+    eventType: 'work_order_testing_started',
+    siteId: workOrder.siteId,
+    workOrderId: workOrder.id,
+    operatorId: user.id,
+    payload: {
+      orderNumber: workOrder.orderNumber,
+      previousStatus: workOrder.status,
+    },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
+  revalidatePath('/admin/work-orders');
+  revalidatePath('/dashboard');
+
+  return updatedWorkOrder;
+}
+
+/**
+ * P1.6: Ship a completed work order
+ */
+export async function shipWorkOrder(workOrderId: string) {
+  const user = await requireRole(['admin', 'supervisor']);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+  });
+
+  if (!workOrder) {
+    throw new Error('Work order not found');
+  }
+
+  validateStatusTransition(workOrder.status, 'shipped');
+
+  const updatedWorkOrder = await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: {
+      status: 'shipped',
+      shippedAt: new Date(),
+    },
+  });
+
+  await emitEvent({
+    eventType: 'work_order_shipped',
+    siteId: workOrder.siteId,
+    workOrderId: workOrder.id,
+    operatorId: user.id,
+    payload: {
+      orderNumber: workOrder.orderNumber,
+      qtyOrdered: workOrder.qtyOrdered,
+      qtyCompleted: workOrder.qtyCompleted,
+    },
+    source: 'ui',
+    idempotencyKey: generateUniqueIdempotencyKey(),
+  });
+
+  revalidatePath('/admin/work-orders');
+  revalidatePath('/dashboard');
+
+  return updatedWorkOrder;
+}
+
+/**
+ * P1.7: Update customer fields on a work order
+ */
+export async function updateWorkOrderCustomerInfo(
+  workOrderId: string,
+  data: {
+    customerName?: string | null;
+    customerOrderRef?: string | null;
+    targetStartDate?: Date | null;
+    notes?: string | null;
+  }
+) {
+  const user = await requireRole(['admin', 'supervisor']);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+  });
+
+  if (!workOrder) {
+    throw new Error('Work order not found');
+  }
+
+  const updatedWorkOrder = await prisma.workOrder.update({
+    where: { id: workOrderId },
+    data: {
+      customerName: data.customerName,
+      customerOrderRef: data.customerOrderRef,
+      targetStartDate: data.targetStartDate,
+      notes: data.notes,
+    },
+  });
+
+  await logAuditTrail(
+    user.id,
+    'update',
+    'WorkOrder',
+    workOrderId,
+    {
+      customerName: workOrder.customerName,
+      customerOrderRef: workOrder.customerOrderRef,
+      targetStartDate: workOrder.targetStartDate,
+      notes: workOrder.notes,
+    },
+    {
+      customerName: data.customerName,
+      customerOrderRef: data.customerOrderRef,
+      targetStartDate: data.targetStartDate,
+      notes: data.notes,
+    }
+  );
+
+  revalidatePath('/admin/work-orders');
+
+  return updatedWorkOrder;
 }

@@ -172,7 +172,10 @@ export async function consumeMaterial(data: {
     throw new Error('Station not found');
   }
 
-  // Create consumption record and update lot quantity in a transaction
+  const previousQty = lot.qtyRemaining;
+  const newQty = previousQty - data.qtyConsumed;
+
+  // Create consumption record, update lot quantity, and write ledger transaction atomically
   const [consumption] = await prisma.$transaction([
     prisma.unitMaterialConsumption.create({
       data: {
@@ -186,7 +189,21 @@ export async function consumeMaterial(data: {
     prisma.materialLot.update({
       where: { id: data.materialLotId },
       data: {
-        qtyRemaining: { decrement: data.qtyConsumed },
+        qtyRemaining: newQty,
+      },
+    }),
+    // Record inventory transaction in the ledger
+    prisma.inventoryTransaction.create({
+      data: {
+        materialLotId: data.materialLotId,
+        transactionType: 'issue',
+        quantity: -data.qtyConsumed,
+        previousQty,
+        newQty,
+        referenceType: 'work_order',
+        referenceId: unit.workOrderId,
+        reason: `Consumed for unit ${unit.serialNumber} at ${station.name}`,
+        operatorId: user.id,
       },
     }),
   ]);

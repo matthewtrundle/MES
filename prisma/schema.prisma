@@ -81,6 +81,7 @@ model Station {
   aiInsights           AIInsight[]
   bomItems             BillOfMaterial[]
   assignedUsers        User[]                    @relation("AssignedStation")
+  processStepDefinitions ProcessStepDefinition[]
 
   @@index([siteId])
   @@map("stations")
@@ -120,17 +121,24 @@ model QualityCheckDefinition {
 }
 
 model Routing {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  productCode String   @map("product_code")
-  operations  Json     // Array of { stationId, sequence, estimatedMinutes }
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  name           String
+  description    String?
+  productCode    String    @map("product_code")
+  serialFormat   String?   @map("serial_format") // e.g., "BLDC-{YYYY}-{SEQ:5}"
+  operations     Json      // Array of { stationId, sequence, estimatedMinutes }
+  revision       String    @default("A")
+  effectiveDate  DateTime? @map("effective_date")
+  supersededById String?   @map("superseded_by_id")
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  workOrders WorkOrder[]
-  bom        BillOfMaterial[]
+  supersededBy      Routing?        @relation("RoutingRevision", fields: [supersededById], references: [id])
+  previousRevisions Routing[]       @relation("RoutingRevision")
+  workOrders        WorkOrder[]
+  bom               BillOfMaterial[]
+  eolTestSuites     EolTestSuite[]
 
   @@map("routings")
 }
@@ -143,6 +151,8 @@ model BillOfMaterial {
   description   String?
   qtyPerUnit    Float   @map("qty_per_unit")
   unitOfMeasure String  @default("EA") @map("unit_of_measure")
+  assemblyGroup String? @map("assembly_group") // stator | rotor | wire_harness | base | final_assembly
+  sortOrder     Int     @default(0) @map("sort_order")
   active        Boolean @default(true)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -188,6 +198,9 @@ model User {
   kitsCreated          Kit[]                     @relation("KitCreator")
   kitsIssued           Kit[]                     @relation("KitIssuer")
   kitLinesPicked       KitLine[]                 @relation("KitLinePicker")
+  ctqMeasurements         CTQMeasurement[]
+  stepDataCaptures        StepDataCapture[]
+  inventoryTransactions   InventoryTransaction[]  @relation("InventoryTransactions")
 
   @@map("users")
 }
@@ -197,32 +210,64 @@ model User {
 // =============================================================================
 
 model WorkOrder {
-  id           String    @id @default(uuid())
-  siteId       String    @map("site_id")
-  routingId    String?   @map("routing_id")
-  orderNumber  String    @unique @map("order_number")
-  productCode  String    @map("product_code")
-  productName  String?   @map("product_name")
-  qtyOrdered   Int       @map("qty_ordered")
-  qtyCompleted Int       @default(0) @map("qty_completed")
-  qtyScrap     Int       @default(0) @map("qty_scrap")
-  status       String    @default("pending") // pending | released | in_progress | completed | cancelled
-  priority     Int       @default(0)
-  releasedAt   DateTime? @map("released_at")
-  completedAt  DateTime? @map("completed_at")
-  dueDate      DateTime? @map("due_date")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id               String    @id @default(uuid())
+  siteId           String    @map("site_id")
+  routingId        String?   @map("routing_id")
+  orderNumber      String    @unique @map("order_number")
+  productCode      String    @map("product_code")
+  productName      String?   @map("product_name")
+  qtyOrdered       Int       @map("qty_ordered")
+  qtyCompleted     Int       @default(0) @map("qty_completed")
+  qtyScrap         Int       @default(0) @map("qty_scrap")
+  status           String    @default("draft") // draft | pending | released | kitting | in_progress | in_testing | completed | shipped | cancelled
+  priority         Int       @default(0)
+  draftedAt        DateTime? @default(now()) @map("drafted_at")
+  releasedAt       DateTime? @map("released_at")
+  kittingStartedAt DateTime? @map("kitting_started_at")
+  testingStartedAt DateTime? @map("testing_started_at")
+  completedAt      DateTime? @map("completed_at")
+  shippedAt        DateTime? @map("shipped_at")
+  dueDate          DateTime? @map("due_date")
+  customerName     String?   @map("customer_name")
+  customerOrderRef String?   @map("customer_order_ref")
+  targetStartDate  DateTime? @map("target_start_date")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  site       Site                 @relation(fields: [siteId], references: [id])
-  routing    Routing?             @relation(fields: [routingId], references: [id])
-  units      Unit[]
-  operations WorkOrderOperation[]
-  kit        Kit?
+  site         Site                   @relation(fields: [siteId], references: [id])
+  routing      Routing?               @relation(fields: [routingId], references: [id])
+  units        Unit[]
+  operations   WorkOrderOperation[]
+  kit          Kit?
+  reservations InventoryReservation[]
 
   @@index([siteId, status])
   @@index([orderNumber])
   @@map("work_orders")
+}
+
+// =============================================================================
+// INVENTORY RESERVATIONS (FIFO Auto-Reservation)
+// =============================================================================
+
+model InventoryReservation {
+  id            String   @id @default(uuid())
+  workOrderId   String   @map("work_order_id")
+  materialLotId String   @map("material_lot_id")
+  materialCode  String   @map("material_code")
+  qtyReserved   Float    @map("qty_reserved")
+  status        String   @default("active") // active | released | consumed
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  workOrder   WorkOrder   @relation(fields: [workOrderId], references: [id])
+  materialLot MaterialLot @relation(fields: [materialLotId], references: [id])
+
+  @@index([workOrderId])
+  @@index([materialLotId])
+  @@index([materialCode])
+  @@map("inventory_reservations")
 }
 
 model WorkOrderOperation {
@@ -248,6 +293,7 @@ model Unit {
   id               String   @id @default(uuid())
   workOrderId      String   @map("work_order_id")
   serialNumber     String   @unique @map("serial_number")
+  serialAssigned   Boolean  @default(false) @map("serial_assigned")
   status           String   @default("created") // created | in_progress | completed | scrapped | rework
   currentStationId String?  @map("current_station_id")
   createdAt        DateTime @default(now()) @map("created_at")
@@ -258,6 +304,7 @@ model Unit {
   materialConsumptions UnitMaterialConsumption[]
   qualityResults       QualityCheckResult[]
   ncrs                 NonconformanceRecord[]
+  eolTestResults       EolTestResult[]
 
   @@index([workOrderId])
   @@index([status])
@@ -274,14 +321,17 @@ model UnitOperationExecution {
   completedAt      DateTime? @map("completed_at")
   cycleTimeMinutes Float?    @map("cycle_time_minutes")
   result           String?   // pass | fail | rework
+  isRework         Boolean   @default(false) @map("is_rework")
+  attemptNumber    Int       @default(1) @map("attempt_number")
   notes            String?
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  unit      Unit               @relation(fields: [unitId], references: [id])
-  operation WorkOrderOperation @relation(fields: [operationId], references: [id])
-  station   Station            @relation(fields: [stationId], references: [id])
-  operator  User               @relation(fields: [operatorId], references: [id])
+  unit         Unit               @relation(fields: [unitId], references: [id])
+  operation    WorkOrderOperation @relation(fields: [operationId], references: [id])
+  station      Station            @relation(fields: [stationId], references: [id])
+  operator     User               @relation(fields: [operatorId], references: [id])
+  dataCaptures StepDataCapture[]
 
   @@index([unitId])
   @@index([stationId, startedAt])
@@ -299,6 +349,7 @@ model MaterialLot {
   description         String?
   qtyReceived         Float    @map("qty_received")
   qtyRemaining        Float    @map("qty_remaining")
+  qtyReserved         Float    @default(0) @map("qty_reserved")
   unitOfMeasure       String   @default("EA") @map("unit_of_measure")
   supplier            String?
   purchaseOrderNumber String?  @map("purchase_order_number")
@@ -309,9 +360,15 @@ model MaterialLot {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  receivedBy   User?                    @relation("ReceivedMaterialLots", fields: [receivedById], references: [id])
-  consumptions UnitMaterialConsumption[]
-  kitLines     KitLine[]
+  supplierId       String?  @map("supplier_id")
+
+  receivedBy       User?                    @relation("ReceivedMaterialLots", fields: [receivedById], references: [id])
+  supplierRef      Supplier?                @relation(fields: [supplierId], references: [id])
+  consumptions            UnitMaterialConsumption[]
+  kitLines                KitLine[]
+  ctqMeasurements         CTQMeasurement[]
+  inventoryTransactions   InventoryTransaction[]
+  reservations            InventoryReservation[]
 
   @@index([materialCode])
   @@index([status])
@@ -448,6 +505,56 @@ model KitLine {
 }
 
 // =============================================================================
+// CTQ (Critical-to-Quality) DEFINITIONS - Incoming Quality Control
+// =============================================================================
+
+model CTQDefinition {
+  id              String   @id @default(uuid())
+  partNumber      String   @map("part_number")
+  revision        String   @default("A")
+  dimensionName   String   @map("dimension_name")
+  nominal         Float
+  usl             Float    // Upper specification limit
+  lsl             Float    // Lower specification limit
+  unitOfMeasure   String   @map("unit_of_measure")
+  measurementTool String?  @map("measurement_tool")
+  methodNote      String?  @map("method_note")
+  sampleSizeRule  String   @default("all") @map("sample_size_rule") // all | fixed_count | aql | skip
+  sampleSize      Int?     @map("sample_size")
+  safetyCritical  Boolean  @default(false) @map("safety_critical")
+  source          String   @default("manual") // manual | extracted
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  measurements CTQMeasurement[]
+
+  @@index([partNumber, revision])
+  @@map("ctq_definitions")
+}
+
+model CTQMeasurement {
+  id              String   @id @default(uuid())
+  ctqDefinitionId String   @map("ctq_definition_id")
+  materialLotId   String?  @map("material_lot_id")
+  sampleNumber    Int      @map("sample_number")
+  measuredValue   Float    @map("measured_value")
+  result          String   // pass | fail
+  inspectorId     String   @map("inspector_id")
+  notes           String?
+  measuredAt      DateTime @default(now()) @map("measured_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  ctqDefinition CTQDefinition @relation(fields: [ctqDefinitionId], references: [id])
+  materialLot   MaterialLot?  @relation(fields: [materialLotId], references: [id])
+  inspector     User          @relation(fields: [inspectorId], references: [id])
+
+  @@index([ctqDefinitionId])
+  @@index([materialLotId])
+  @@map("ctq_measurements")
+}
+
+// =============================================================================
 // AUDIT LOG
 // =============================================================================
 
@@ -527,4 +634,201 @@ model Shift {
   site Site @relation(fields: [siteId], references: [id])
 
   @@map("shifts")
+}
+
+// =============================================================================
+// PART MASTER & SUPPLIER CATALOG
+// =============================================================================
+
+model PartMaster {
+  id               String   @id @default(uuid())
+  partNumber       String   @unique @map("part_number") // e.g., 510-00001
+  name             String
+  description      String?
+  revision         String   @default("A")
+  category         String   @default("component") // component | raw_material | consumable | subassembly | finished_good
+  unitOfMeasure    String   @default("EA") @map("unit_of_measure")
+  countryOfOrigin  String?  @map("country_of_origin")
+  reorderPoint     Float?   @map("reorder_point")
+  targetStockLevel Float?   @map("target_stock_level")
+  standardCost     Float?   @map("standard_cost")
+  serializationType String  @default("none") @map("serialization_type") // none | serial | lot | both
+  hazardous        Boolean  @default(false)
+  hazardousNotes   String?  @map("hazardous_notes")
+  status           String   @default("active") // active | obsolete | pending_approval
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  suppliers PartSupplier[]
+
+  @@map("part_masters")
+}
+
+model Supplier {
+  id                  String   @id @default(uuid())
+  name                String
+  supplierId          String   @unique @map("supplier_id") // e.g., SUP-001
+  contactEmail        String?  @map("contact_email")
+  contactPhone        String?  @map("contact_phone")
+  address             String?
+  countryOfOrigin     String?  @map("country_of_origin")
+  qualificationStatus String   @default("pending") @map("qualification_status") // pending | qualified | conditional | disqualified
+  notes               String?
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  parts        PartSupplier[]
+  materialLots MaterialLot[]
+
+  @@map("suppliers")
+}
+
+model PartSupplier {
+  id                 String  @id @default(uuid())
+  partId             String  @map("part_id")
+  supplierId         String  @map("supplier_id")
+  supplierPartNumber String? @map("supplier_part_number")
+  isPreferred        Boolean @default(false) @map("is_preferred")
+  unitCost           Float?  @map("unit_cost")
+  leadTimeDays       Int?    @map("lead_time_days")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  part     PartMaster @relation(fields: [partId], references: [id])
+  supplier Supplier   @relation(fields: [supplierId], references: [id])
+
+  @@unique([partId, supplierId])
+  @@map("part_suppliers")
+}
+
+// =============================================================================
+// PROCESS STEP DEFINITIONS & DATA CAPTURE
+// =============================================================================
+
+model ProcessStepDefinition {
+  id              String   @id @default(uuid())
+  name            String   // e.g., "Winding", "Press shaft into bell"
+  description     String?
+  category        String   // stator_production, stator_electrical, wire_harness, base_assembly, rotor_assembly, final_assembly, packaging
+  stationId       String?  @map("station_id")
+  sequenceOrder   Int      @default(0) @map("sequence_order")
+  isMandatory     Boolean  @default(true) @map("is_mandatory")
+  requiresSignoff Boolean  @default(false) @map("requires_signoff")
+  triggersQc      Boolean  @default(false) @map("triggers_qc")
+  cycleTimeTarget Float?   @map("cycle_time_target") // Minutes
+  dataFields      Json     @default("[]") @map("data_fields") // Array of DataFieldDefinition
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  station      Station?          @relation(fields: [stationId], references: [id])
+  dataCaptures StepDataCapture[]
+
+  @@map("process_step_definitions")
+}
+
+model StepDataCapture {
+  id               String    @id @default(uuid())
+  executionId      String    @map("execution_id")
+  stepDefinitionId String    @map("step_definition_id")
+  capturedData     Json      @map("captured_data") // Key-value pairs matching dataFields
+  operatorId       String    @map("operator_id")
+  signedOff        Boolean   @default(false) @map("signed_off")
+  signedOffAt      DateTime? @map("signed_off_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  execution      UnitOperationExecution @relation(fields: [executionId], references: [id])
+  stepDefinition ProcessStepDefinition  @relation(fields: [stepDefinitionId], references: [id])
+  operator       User                   @relation(fields: [operatorId], references: [id])
+
+  @@unique([executionId, stepDefinitionId])
+  @@map("step_data_captures")
+}
+
+// =============================================================================
+// EOL (END-OF-LINE) TESTING
+// =============================================================================
+
+model EolTestSuite {
+  id          String   @id @default(uuid())
+  routingId   String   @map("routing_id")
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  routing    Routing            @relation(fields: [routingId], references: [id])
+  parameters EolTestParameter[]
+  results    EolTestResult[]
+
+  @@index([routingId])
+  @@map("eol_test_suites")
+}
+
+model EolTestParameter {
+  id          String   @id @default(uuid())
+  suiteId     String   @map("suite_id")
+  name        String
+  unit        String
+  minValue    Float?   @map("min_value")
+  maxValue    Float?   @map("max_value")
+  targetValue Float?   @map("target_value")
+  sequence    Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  suite EolTestSuite @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+
+  @@index([suiteId])
+  @@map("eol_test_parameters")
+}
+
+model EolTestResult {
+  id              String   @id @default(uuid())
+  unitId          String   @map("unit_id")
+  suiteId         String   @map("suite_id")
+  operatorId      String   @map("operator_id")
+  compositeResult String   @map("composite_result") // pass | fail
+  parameterResults Json    @map("parameter_results") // Array of { parameterId, value, pass }
+  notes           String?
+  testedAt        DateTime @default(now()) @map("tested_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  unit  Unit         @relation(fields: [unitId], references: [id])
+  suite EolTestSuite @relation(fields: [suiteId], references: [id])
+
+  @@index([unitId])
+  @@index([suiteId])
+  @@map("eol_test_results")
+}
+
+// =============================================================================
+// INVENTORY TRANSACTION LEDGER (Append-only)
+// =============================================================================
+
+model InventoryTransaction {
+  id              String   @id @default(uuid())
+  materialLotId   String   @map("material_lot_id")
+  transactionType String   @map("transaction_type") // receive | issue | return | scrap | adjustment | transfer
+  quantity        Float    // positive = increase, negative = decrease
+  previousQty     Float    @map("previous_qty")
+  newQty          Float    @map("new_qty")
+  referenceType   String?  @map("reference_type") // work_order | kit | ncr | manual
+  referenceId     String?  @map("reference_id")
+  reason          String?
+  operatorId      String   @map("operator_id")
+  timestamp       DateTime @default(now())
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  materialLot MaterialLot @relation(fields: [materialLotId], references: [id])
+  operator    User        @relation("InventoryTransactions", fields: [operatorId], references: [id])
+
+  @@index([materialLotId, timestamp])
+  @@index([transactionType])
+  @@index([referenceType, referenceId])
+  @@index([operatorId, timestamp])
+  @@map("inventory_transactions")
 }

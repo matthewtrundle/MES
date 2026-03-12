@@ -133,7 +133,10 @@ export async function pickKitLine(data: z.infer<typeof pickKitLineSchema>) {
     throw new Error(`Only ${remainingNeeded} more needed for this line`);
   }
 
-  // Update kit line and reserve material in a transaction
+  const previousQty = lot.qtyRemaining;
+  const newQty = previousQty - validated.qtyPicked;
+
+  // Update kit line, reserve material, and record ledger transaction atomically
   await prisma.$transaction([
     prisma.kitLine.update({
       where: { id: validated.kitLineId },
@@ -147,7 +150,21 @@ export async function pickKitLine(data: z.infer<typeof pickKitLineSchema>) {
     prisma.materialLot.update({
       where: { id: validated.materialLotId },
       data: {
-        qtyRemaining: { decrement: validated.qtyPicked },
+        qtyRemaining: newQty,
+      },
+    }),
+    // Record inventory transaction in the ledger
+    prisma.inventoryTransaction.create({
+      data: {
+        materialLotId: validated.materialLotId,
+        transactionType: 'issue',
+        quantity: -validated.qtyPicked,
+        previousQty,
+        newQty,
+        referenceType: 'kit',
+        referenceId: kitLine.kit.id,
+        reason: `Kit pick for WO ${kitLine.kit.workOrder.orderNumber}`,
+        operatorId: user.id,
       },
     }),
   ]);

@@ -55,6 +55,10 @@ export const createWorkOrderSchema = z.object({
   routingId: uuid.optional(),
   priority: z.number().int().min(0).max(100).optional(),
   dueDate: z.coerce.date().optional(),
+  customerName: z.string().max(200).optional(),
+  customerOrderRef: z.string().max(100).optional(),
+  targetStartDate: z.coerce.date().optional(),
+  notes: z.string().max(2000).optional(),
 });
 
 export const cancelWorkOrderSchema = z.object({
@@ -104,6 +108,53 @@ export const selectDowntimeReasonSchema = z.object({
 export const endDowntimeSchema = z.object({
   downtimeId: uuid,
   notes: z.string().max(1000).optional(),
+});
+
+// ── EOL Testing ─────────────────────────────────────────────────
+export const eolTestParameterSchema = z.object({
+  parameterId: uuid,
+  value: z.number(),
+});
+
+export const recordEolTestResultSchema = z.object({
+  unitId: uuid,
+  suiteId: uuid,
+  results: z.array(eolTestParameterSchema).min(1, 'At least one test result is required'),
+  notes: z.string().max(2000).optional(),
+});
+
+export const createEolTestSuiteSchema = z.object({
+  routingId: uuid,
+  name: z.string().min(1, 'Name is required').max(200),
+  description: z.string().max(1000).optional(),
+  parameters: z.array(z.object({
+    name: z.string().min(1, 'Parameter name is required').max(100),
+    unit: z.string().min(1, 'Unit is required').max(20),
+    minValue: z.number().optional(),
+    maxValue: z.number().optional(),
+    targetValue: z.number().optional(),
+    sequence: z.number().int().min(0).optional(),
+  })).min(1, 'At least one test parameter is required'),
+});
+
+export const updateEolTestSuiteSchema = z.object({
+  id: uuid,
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(1000).optional(),
+  active: z.boolean().optional(),
+  parameters: z.array(z.object({
+    id: uuid.optional(),
+    name: z.string().min(1).max(100),
+    unit: z.string().min(1).max(20),
+    minValue: z.number().optional(),
+    maxValue: z.number().optional(),
+    targetValue: z.number().optional(),
+    sequence: z.number().int().min(0).optional(),
+  })).optional(),
+});
+
+export const assignSerialNumberSchema = z.object({
+  unitId: uuid,
 });
 
 // ── Admin ─────────────────────────────────────────────────────────

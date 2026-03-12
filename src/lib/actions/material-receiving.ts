@@ -45,20 +45,41 @@ export async function receiveMaterialLot(data: z.infer<typeof receiveMaterialLot
     throw new Error('No site configured');
   }
 
-  const lot = await prisma.materialLot.create({
-    data: {
-      lotNumber: validated.lotNumber,
-      materialCode: validated.materialCode,
-      description: validated.description,
-      qtyReceived: validated.qtyReceived,
-      qtyRemaining: validated.qtyReceived,
-      unitOfMeasure: validated.unitOfMeasure,
-      supplier: validated.supplier,
-      purchaseOrderNumber: validated.purchaseOrderNumber,
-      expiresAt: validated.expiresAt,
-      status: validated.status,
-      receivedById: user.id,
-    },
+  // Create lot and record receiving transaction atomically
+  const [lot] = await prisma.$transaction(async (tx) => {
+    const newLot = await tx.materialLot.create({
+      data: {
+        lotNumber: validated.lotNumber,
+        materialCode: validated.materialCode,
+        description: validated.description,
+        qtyReceived: validated.qtyReceived,
+        qtyRemaining: validated.qtyReceived,
+        unitOfMeasure: validated.unitOfMeasure,
+        supplier: validated.supplier,
+        purchaseOrderNumber: validated.purchaseOrderNumber,
+        expiresAt: validated.expiresAt,
+        status: validated.status,
+        receivedById: user.id,
+      },
+    });
+
+    // Record inventory transaction in the ledger
+    const txn = await tx.inventoryTransaction.create({
+      data: {
+        materialLotId: newLot.id,
+        transactionType: 'receive',
+        quantity: validated.qtyReceived,
+        previousQty: 0,
+        newQty: validated.qtyReceived,
+        referenceType: 'manual',
+        reason: validated.supplier
+          ? `Received from ${validated.supplier}${validated.purchaseOrderNumber ? ` (PO: ${validated.purchaseOrderNumber})` : ''}`
+          : 'Material receiving',
+        operatorId: user.id,
+      },
+    });
+
+    return [newLot, txn] as const;
   });
 
   await emitEvent({

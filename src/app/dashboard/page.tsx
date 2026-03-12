@@ -315,6 +315,24 @@ async function getDashboardData() {
     criticalMaterialCount > 0 ? 'critical' :
     lowMaterialCount > 0 ? 'warning' : 'good';
 
+  // Calculate FPY for the KPI card
+  const fpyExecutions = await prisma.unitOperationExecution.findMany({
+    where: {
+      completedAt: { not: null },
+      result: { not: null },
+    },
+    select: {
+      isRework: true,
+      result: true,
+    },
+  });
+
+  const fpyFirstAttempts = fpyExecutions.filter((e) => !e.isRework);
+  const fpyFirstPassCount = fpyFirstAttempts.filter((e) => e.result === 'pass').length;
+  const overallFPY = fpyFirstAttempts.length > 0
+    ? Math.round((fpyFirstPassCount / fpyFirstAttempts.length) * 1000) / 10
+    : 100;
+
   // Calculate uptime percentage for today
   // Use time since start of shift (reuse shiftStartHour from targets section)
   const shiftStart = new Date(today);
@@ -365,6 +383,8 @@ async function getDashboardData() {
     targetDowntimeMinutes,
     targetQualityRate,
     targetMaxWIP,
+    // FPY
+    overallFPY,
   };
 }
 
@@ -606,7 +626,7 @@ export default async function DashboardPage() {
         )}
 
         {/* KPI Grid - All cards are clickable for drill-down with Target vs Actual */}
-        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <KPICard
             title="Units Completed"
             value={data.unitsCompletedToday}
@@ -652,6 +672,18 @@ export default async function DashboardPage() {
             subtitle={`${data.passCount} pass / ${data.failCount} fail`}
             target={{
               value: `${data.targetQualityRate}%`,
+              comparison: 'above'
+            }}
+            href="/dashboard/quality"
+          />
+          <KPICard
+            title="First-Pass Yield"
+            value={`${data.overallFPY}%`}
+            icon="gauge"
+            status={data.overallFPY >= 95 ? 'success' : data.overallFPY >= 90 ? 'warning' : 'critical'}
+            subtitle="All stations"
+            target={{
+              value: '95%',
               comparison: 'above'
             }}
             href="/dashboard/quality"

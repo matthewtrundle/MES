@@ -25,6 +25,10 @@ export type EventType =
   | 'ncr_created'
   | 'ncr_dispositioned'
   | 'ncr_closed'
+  // EOL Testing Events
+  | 'eol_test_recorded'
+  | 'eol_test_passed'
+  | 'eol_test_failed'
   // Rework/Scrap Events
   | 'rework_created'
   | 'rework_completed'
@@ -36,6 +40,21 @@ export type EventType =
   // Material Events
   | 'material_lot_received'
   | 'material_lot_consumed'
+  | 'inventory_transaction_recorded'
+  // Inventory Reservation Events
+  | 'inventory_reserved'
+  | 'inventory_reservation_released'
+  // Work Order Status Events
+  | 'work_order_drafted'
+  | 'work_order_kitting_started'
+  | 'work_order_testing_started'
+  | 'work_order_shipped'
+  | 'work_order_status_changed'
+  // CTQ / IQC Events
+  | 'ctq_measurement_recorded'
+  // Step Data Capture Events
+  | 'step_data_captured'
+  | 'step_data_signed_off'
   // Admin Events
   | 'config_changed'
   | 'user_login'

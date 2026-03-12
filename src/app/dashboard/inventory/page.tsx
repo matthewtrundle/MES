@@ -5,6 +5,8 @@ import {
   getExpiringLots,
   getAllLots,
 } from '@/lib/actions/inventory';
+import { getRecentTransactions } from '@/lib/actions/inventory-ledger';
+import { getBuildableUnits } from '@/lib/actions/buildable-units';
 import {
   Card,
   CardHeader,
@@ -27,21 +29,27 @@ import {
   Clock,
   TrendingDown,
   BoxesIcon,
+  FileText,
+  Hammer,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { InventoryAdjustButton } from '@/components/admin/InventoryAdjustButton';
+import { TransactionLedger } from '@/components/admin/TransactionLedger';
 
 export default async function InventoryPage() {
   await requireRole(['admin', 'supervisor']);
 
-  const [summary, lowStock, expiringLots, allLots] = await Promise.all([
-    getInventorySummary(),
-    getLowStockMaterials(7),
-    getExpiringLots(14),
-    getAllLots(),
-  ]);
+  const [summary, lowStock, expiringLots, allLots, recentTransactions, buildableUnits] =
+    await Promise.all([
+      getInventorySummary(),
+      getLowStockMaterials(7),
+      getExpiringLots(14),
+      getAllLots(),
+      getRecentTransactions(20),
+      getBuildableUnits(),
+    ]);
 
   // Compute totals from summary
   const totalMaterials = summary.length;
@@ -146,6 +154,102 @@ export default async function InventoryPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Buildable Units */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Hammer className="h-5 w-5 text-indigo-500" />
+              Buildable Units
+              {buildableUnits.length > 0 && (
+                <Badge variant="outline" className="ml-2">
+                  {buildableUnits.length} product{buildableUnits.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {buildableUnits.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                No routings with BOM defined
+              </p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {buildableUnits.map((bu) => (
+                  <div
+                    key={bu.routingId}
+                    className="rounded-lg border bg-white p-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {bu.routingName}
+                        </h3>
+                        <p className="text-xs text-gray-500 font-mono">
+                          {bu.productCode}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p
+                          className={`text-3xl font-bold ${
+                            bu.buildableUnits === 0
+                              ? 'text-red-600'
+                              : bu.buildableUnits <= 5
+                                ? 'text-amber-600'
+                                : 'text-green-600'
+                          }`}
+                        >
+                          {bu.buildableUnits}
+                        </p>
+                        <p className="text-xs text-gray-500">units</p>
+                      </div>
+                    </div>
+
+                    {bu.limitingMaterial && (
+                      <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2">
+                        <p className="text-xs font-medium text-amber-700">
+                          Bottleneck
+                        </p>
+                        <p className="text-sm text-amber-900 font-mono">
+                          {bu.limitingMaterial.materialCode}
+                        </p>
+                        <p className="text-xs text-amber-600">
+                          {bu.limitingMaterial.availableQty} available /{' '}
+                          {bu.limitingMaterial.qtyPerUnit} per unit
+                        </p>
+                      </div>
+                    )}
+
+                    {bu.materials.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          BOM Components
+                        </p>
+                        {bu.materials.map((mat) => (
+                          <div
+                            key={mat.materialCode}
+                            className={`flex items-center justify-between text-sm px-2 py-1 rounded ${
+                              mat.isBottleneck
+                                ? 'bg-red-50 border border-red-200'
+                                : ''
+                            }`}
+                          >
+                            <span className="font-mono text-xs">
+                              {mat.materialCode}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {mat.availableQty} avail / {mat.qtyPerUnit} req
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Inventory Table */}
         <Card>
@@ -366,6 +470,7 @@ export default async function InventoryPage() {
             )}
           </CardContent>
         </Card>
+
         {/* All Lots (with Adjust) */}
         <Card>
           <CardHeader>
@@ -439,6 +544,25 @@ export default async function InventoryPage() {
                 </Table>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Transaction Ledger */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-slate-500" />
+              Inventory Transaction Ledger
+              <Badge variant="outline" className="ml-2">
+                Immutable
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TransactionLedger
+              initialTransactions={recentTransactions as never[]}
+              initialTotal={recentTransactions.length}
+            />
           </CardContent>
         </Card>
       </main>
