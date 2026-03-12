@@ -204,6 +204,9 @@ model User {
   iqcInspections          IncomingInspection[]    @relation("IQCInspector")
   iqcApprovals            IncomingInspection[]    @relation("IQCApprover")
   iqcResults              IQCResult[]             @relation("IQCResultInspector")
+  shipments               Shipment[]              @relation("ShipmentShipper")
+  notifications           Notification[]
+  apiKeys                 ApiKey[]                @relation("ApiKeyCreator")
 
   @@map("users")
 }
@@ -244,6 +247,7 @@ model WorkOrder {
   operations   WorkOrderOperation[]
   kit          Kit?
   reservations InventoryReservation[]
+  shipments    Shipment[]
 
   @@index([siteId, status])
   @@index([orderNumber])
@@ -963,4 +967,136 @@ model InventoryTransaction {
   @@index([referenceType, referenceId])
   @@index([operatorId, timestamp])
   @@map("inventory_transactions")
+}
+
+// =============================================================================
+// SHIPPING & FULFILLMENT
+// =============================================================================
+
+model Shipment {
+  id              String    @id @default(uuid())
+  shipmentNumber  String    @unique @map("shipment_number") // e.g., SHP-2026-0001
+  workOrderId     String    @map("work_order_id")
+  customerName    String    @map("customer_name")
+  customerAddress String?   @map("customer_address")
+  shipDate        DateTime? @map("ship_date")
+  carrier         String?
+  trackingNumber  String?   @map("tracking_number")
+  packingListUrl  String?   @map("packing_list_url")
+  cocUrl          String?   @map("coc_url")
+  totalBoxes      Int?      @map("total_boxes")
+  totalWeight     Float?    @map("total_weight")
+  weightUnit      String    @default("lbs") @map("weight_unit")
+  specialNotes    String?   @map("special_notes")
+  status          String    @default("pending") // pending | packed | shipped | delivered
+  shippedById     String?   @map("shipped_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  workOrder WorkOrder    @relation(fields: [workOrderId], references: [id])
+  shippedBy User?        @relation("ShipmentShipper", fields: [shippedById], references: [id])
+  lines     ShipmentLine[]
+
+  @@index([workOrderId])
+  @@index([status])
+  @@map("shipments")
+}
+
+model ShipmentLine {
+  id           String   @id @default(uuid())
+  shipmentId   String   @map("shipment_id")
+  unitId       String   @map("unit_id")
+  serialNumber String   @map("serial_number")
+  boxNumber    Int?     @map("box_number")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("shipment_lines")
+}
+
+// =============================================================================
+// WEBHOOK SUBSCRIPTIONS & DELIVERY
+// =============================================================================
+
+model WebhookSubscription {
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  secret    String   // HMAC signing secret
+  events    String[] // Array of event types to subscribe to
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  deliveries WebhookDelivery[]
+
+  @@map("webhook_subscriptions")
+}
+
+model WebhookDelivery {
+  id             String    @id @default(uuid())
+  subscriptionId String    @map("subscription_id")
+  eventType      String    @map("event_type")
+  payload        Json
+  statusCode     Int?      @map("status_code")
+  responseBody   String?   @map("response_body")
+  attempts       Int       @default(0)
+  lastAttemptAt  DateTime? @map("last_attempt_at")
+  deliveredAt    DateTime? @map("delivered_at")
+  status         String    @default("pending") // pending | delivered | failed
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, status])
+  @@index([createdAt])
+  @@map("webhook_deliveries")
+}
+
+// =============================================================================
+// NOTIFICATIONS
+// =============================================================================
+
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  title      String
+  message    String
+  type       String    @default("info") // info | warning | error | success
+  category   String    @default("system") // system | quality | production | shipping | inventory
+  entityType String?   @map("entity_type")
+  entityId   String?   @map("entity_id")
+  read       Boolean   @default(false)
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// =============================================================================
+// API KEYS (Machine-to-Machine Authentication)
+// =============================================================================
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  name        String
+  keyHash     String    @unique @map("key_hash") // SHA-256 hash of the actual key
+  keyPrefix   String    @map("key_prefix") // First 8 chars for display, e.g., "mes_1234..."
+  permissions String[]  // Array of permission strings
+  expiresAt   DateTime? @map("expires_at")
+  lastUsedAt  DateTime? @map("last_used_at")
+  active      Boolean   @default(true)
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  createdBy User @relation("ApiKeyCreator", fields: [createdById], references: [id])
+
+  @@map("api_keys")
 }

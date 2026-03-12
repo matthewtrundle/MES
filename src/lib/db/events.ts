@@ -66,6 +66,19 @@ export type EventType =
   // Step Data Capture Events
   | 'step_data_captured'
   | 'step_data_signed_off'
+  // Shipping Events
+  | 'shipment_created'
+  | 'shipment_shipped'
+  | 'packing_list_generated'
+  | 'coc_generated'
+  // Notification Events
+  | 'notification_created'
+  // Webhook Events
+  | 'webhook_delivered'
+  | 'webhook_failed'
+  // API Key Events
+  | 'api_key_created'
+  | 'api_key_revoked'
   // Admin Events
   | 'config_changed'
   | 'user_login'
