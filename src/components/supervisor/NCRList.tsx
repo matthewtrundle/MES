@@ -7,10 +7,10 @@ import { dispositionNCR, closeNCR } from '@/lib/actions/quality';
 import { useRouter } from 'next/navigation';
 
 type NCRWithDetails = NonconformanceRecord & {
-  unit: Unit & {
+  unit: (Unit & {
     workOrder: WorkOrder;
-  };
-  station: Station;
+  }) | null;
+  station: Station | null;
 };
 
 interface NCRListProps {
@@ -81,7 +81,7 @@ export function NCRList({ ncrs }: NCRListProps) {
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{ncr.unit.serialNumber}</span>
+                  <span className="font-medium">{ncr.unit?.serialNumber ?? ncr.materialLotId ? 'IQC' : 'N/A'}</span>
                   <span
                     className={`rounded px-2 py-0.5 text-xs ${
                       ncr.status === 'open'
@@ -94,7 +94,7 @@ export function NCRList({ ncrs }: NCRListProps) {
                 </div>
                 <p className="text-sm text-gray-600">{ncr.defectType}</p>
                 <p className="text-xs text-gray-500">
-                  {ncr.station.name} • {new Date(ncr.createdAt).toLocaleString()}
+                  {ncr.station?.name ?? 'IQC'} • {new Date(ncr.createdAt).toLocaleString()}
                 </p>
               </div>
               <svg
@@ -119,8 +119,8 @@ export function NCRList({ ncrs }: NCRListProps) {
                   <div>
                     <p className="text-sm text-gray-500">Work Order</p>
                     <p className="font-medium">
-                      {ncr.unit.workOrder.orderNumber} -{' '}
-                      {ncr.unit.workOrder.productCode}
+                      {ncr.unit?.workOrder.orderNumber ?? 'N/A'} -{' '}
+                      {ncr.unit?.workOrder.productCode ?? 'IQC NCR'}
                     </p>
                   </div>
                   {ncr.description && (

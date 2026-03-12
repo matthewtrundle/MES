@@ -412,7 +412,7 @@ export default async function QualityPage() {
                   >
                     <div>
                       <p className="font-medium text-gray-900">
-                        {ncr.unit.serialNumber}
+                        {ncr.unit?.serialNumber ?? 'IQC NCR'}
                       </p>
                       <p className="text-sm text-gray-500">
                         {ncr.defectType} at {ncr.station?.name}

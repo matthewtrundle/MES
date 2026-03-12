@@ -324,7 +324,7 @@ export default async function ShiftReportPage() {
                     <ul className="text-sm text-red-600 mt-1">
                       {data.openNCRs.slice(0, 3).map((ncr) => (
                         <li key={ncr.id}>
-                          • {ncr.unit.serialNumber}: {ncr.defectType}
+                          • {ncr.unit?.serialNumber ?? 'IQC'}: {ncr.defectType}
                         </li>
                       ))}
                     </ul>

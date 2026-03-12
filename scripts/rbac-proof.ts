@@ -90,7 +90,7 @@ async function runRbacProof() {
 
 async function runRbacTest(
   ncr: Awaited<ReturnType<typeof prisma.nonconformanceRecord.findFirst>> & {
-    unit: { workOrder: { orderNumber: string }; serialNumber: string };
+    unit: { workOrder: { orderNumber: string }; serialNumber: string } | null;
   },
   operator: { id: string; name: string; role: Role },
   supervisor: { id: string; name: string; role: Role }
@@ -98,8 +98,8 @@ async function runRbacTest(
   console.log(`\n📝 Test NCR:`);
   console.log(`   ID:          ${ncr!.id}`);
   console.log(`   Status:      ${ncr!.status}`);
-  console.log(`   Work Order:  ${ncr!.unit.workOrder.orderNumber}`);
-  console.log(`   Unit:        ${ncr!.unit.serialNumber}`);
+  console.log(`   Work Order:  ${ncr!.unit?.workOrder.orderNumber ?? 'N/A'}`);
+  console.log(`   Unit:        ${ncr!.unit?.serialNumber ?? 'N/A'}`);
   console.log(`   Defect:      ${ncr!.defectType}`);
 
   console.log('\n' + '='.repeat(60));

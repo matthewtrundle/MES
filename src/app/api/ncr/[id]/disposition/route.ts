@@ -92,46 +92,28 @@ export async function POST(
       },
     });
 
-    // Update unit status based on disposition
+    // Update unit status based on disposition (production NCRs only)
     let unitStatus = 'rework';
-    if (disposition === 'scrap') {
-      unitStatus = 'scrapped';
-      await prisma.workOrder.update({
-        where: { id: ncr.unit.workOrderId },
-        data: {
-          qtyScrap: { increment: 1 },
-        },
+    if (ncr.unit && ncr.unitId) {
+      if (disposition === 'scrap') {
+        unitStatus = 'scrapped';
+        await prisma.workOrder.update({
+          where: { id: ncr.unit.workOrderId },
+          data: {
+            qtyScrap: { increment: 1 },
+          },
+        });
+      } else if (disposition === 'use_as_is') {
+        unitStatus = 'in_progress';
+      }
+
+      await prisma.unit.update({
+        where: { id: ncr.unitId },
+        data: { status: unitStatus },
       });
-    } else if (disposition === 'use_as_is') {
-      unitStatus = 'in_progress';
-    }
 
-    await prisma.unit.update({
-      where: { id: ncr.unitId },
-      data: { status: unitStatus },
-    });
-
-    // Emit NCR disposition event
-    await emitEvent({
-      eventType: 'ncr_dispositioned',
-      siteId: ncr.unit.workOrder.siteId,
-      stationId: ncr.stationId,
-      workOrderId: ncr.unit.workOrderId,
-      unitId: ncr.unitId,
-      operatorId: user.id,
-      payload: {
-        serialNumber: ncr.unit.serialNumber,
-        defectType: ncr.defectType,
-        disposition,
-      },
-      source: 'ui',
-      idempotencyKey: generateIdempotencyKey('ncr_dispositioned', ncrId),
-    });
-
-    // Emit additional events based on disposition
-    if (disposition === 'scrap') {
       await emitEvent({
-        eventType: 'scrap_recorded',
+        eventType: 'ncr_dispositioned',
         siteId: ncr.unit.workOrder.siteId,
         stationId: ncr.stationId,
         workOrderId: ncr.unit.workOrderId,
@@ -139,30 +121,48 @@ export async function POST(
         operatorId: user.id,
         payload: {
           serialNumber: ncr.unit.serialNumber,
-          reason: ncr.defectType,
-          ncrId: ncr.id,
+          defectType: ncr.defectType,
+          disposition,
         },
         source: 'ui',
-        idempotencyKey: generateIdempotencyKey('scrap_recorded', `${ncr.unitId}:${ncrId}`),
+        idempotencyKey: generateIdempotencyKey('ncr_dispositioned', ncrId),
       });
-    }
 
-    if (disposition === 'rework') {
-      await emitEvent({
-        eventType: 'rework_created',
-        siteId: ncr.unit.workOrder.siteId,
-        stationId: ncr.stationId,
-        workOrderId: ncr.unit.workOrderId,
-        unitId: ncr.unitId,
-        operatorId: user.id,
-        payload: {
-          serialNumber: ncr.unit.serialNumber,
-          reason: ncr.defectType,
-          ncrId: ncr.id,
-        },
-        source: 'ui',
-        idempotencyKey: generateIdempotencyKey('rework_created', `${ncr.unitId}:${ncrId}`),
-      });
+      if (disposition === 'scrap') {
+        await emitEvent({
+          eventType: 'scrap_recorded',
+          siteId: ncr.unit.workOrder.siteId,
+          stationId: ncr.stationId,
+          workOrderId: ncr.unit.workOrderId,
+          unitId: ncr.unitId,
+          operatorId: user.id,
+          payload: {
+            serialNumber: ncr.unit.serialNumber,
+            reason: ncr.defectType,
+            ncrId: ncr.id,
+          },
+          source: 'ui',
+          idempotencyKey: generateIdempotencyKey('scrap_recorded', `${ncr.unitId}:${ncrId}`),
+        });
+      }
+
+      if (disposition === 'rework') {
+        await emitEvent({
+          eventType: 'rework_created',
+          siteId: ncr.unit.workOrder.siteId,
+          stationId: ncr.stationId,
+          workOrderId: ncr.unit.workOrderId,
+          unitId: ncr.unitId,
+          operatorId: user.id,
+          payload: {
+            serialNumber: ncr.unit.serialNumber,
+            reason: ncr.defectType,
+            ncrId: ncr.id,
+          },
+          source: 'ui',
+          idempotencyKey: generateIdempotencyKey('rework_created', `${ncr.unitId}:${ncrId}`),
+        });
+      }
     }
 
     return NextResponse.json({

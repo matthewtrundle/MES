@@ -60,6 +60,7 @@ export type EventType =
   | 'iqc_inspection_started'
   | 'iqc_inspection_completed'
   | 'iqc_disposition_recorded'
+  | 'iqc_uai_approved'
   // CTQ / IQC Events
   | 'ctq_measurement_recorded'
   // Step Data Capture Events

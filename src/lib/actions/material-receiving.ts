@@ -16,12 +16,18 @@ const receiveMaterialLotSchema = z.object({
   supplier: z.string().max(200).optional(),
   purchaseOrderNumber: z.string().max(50).optional(),
   expiresAt: z.coerce.date().optional(),
-  status: z.enum(['available', 'quarantine']).default('available'),
+  status: z.enum(['available', 'quarantine', 'pending_iqc']).default('available'),
+  // PO-link fields
+  poLineItemId: z.string().uuid().optional(),
+  supplierId: z.string().uuid().optional(),
+  carrier: z.string().max(100).optional(),
+  trackingNumber: z.string().max(100).optional(),
+  conditionNotes: z.string().max(1000).optional(),
 });
 
 const updateMaterialLotStatusSchema = z.object({
   lotId: uuid,
-  status: z.enum(['available', 'quarantine', 'expired', 'depleted']),
+  status: z.enum(['available', 'quarantine', 'expired', 'depleted', 'pending_iqc']),
 });
 
 /**
@@ -60,6 +66,11 @@ export async function receiveMaterialLot(data: z.infer<typeof receiveMaterialLot
         expiresAt: validated.expiresAt,
         status: validated.status,
         receivedById: user.id,
+        poLineItemId: validated.poLineItemId ?? null,
+        supplierId: validated.supplierId ?? null,
+        carrier: validated.carrier ?? null,
+        trackingNumber: validated.trackingNumber ?? null,
+        conditionNotes: validated.conditionNotes ?? null,
       },
     });
 
