@@ -173,6 +173,11 @@ enum Role {
   operator
   supervisor
   admin
+  buyer
+  receiving_mgr
+  qa_inspector
+  supply_chain_mgr
+  shipping_coordinator
 }
 
 model User {
