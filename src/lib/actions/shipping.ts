@@ -12,11 +12,13 @@ import {
 } from '@/lib/validation/shipping-schemas';
 
 // ── Get next shipment number ────────────────────────────────────
-async function getNextShipmentNumber(): Promise<string> {
+async function getNextShipmentNumber(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0] = prisma
+): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `SHP-${year}-`;
 
-  const lastShipment = await prisma.shipment.findFirst({
+  const lastShipment = await tx.shipment.findFirst({
     where: {
       shipmentNumber: { startsWith: prefix },
     },
@@ -167,9 +169,8 @@ export async function createShipment(data: CreateShipmentInput) {
     throw new Error('No site configured');
   }
 
-  const shipmentNumber = await getNextShipmentNumber();
-
   const result = await prisma.$transaction(async (tx) => {
+    const shipmentNumber = await getNextShipmentNumber(tx);
     // Verify work order exists and is completed
     const workOrder = await tx.workOrder.findUnique({
       where: { id: validated.workOrderId },
@@ -271,7 +272,7 @@ export async function createShipment(data: CreateShipmentInput) {
     operatorId: user.id,
     payload: {
       shipmentId: result.id,
-      shipmentNumber,
+      shipmentNumber: result.shipmentNumber,
       workOrderNumber: result.workOrder.orderNumber,
       customerName: validated.customerName,
       unitCount: validated.lines.length,
@@ -282,7 +283,7 @@ export async function createShipment(data: CreateShipmentInput) {
   });
 
   await logAuditTrail(user.id, 'create', 'Shipment', result.id, null, {
-    shipmentNumber,
+    shipmentNumber: result.shipmentNumber,
     workOrderId: validated.workOrderId,
     unitCount: validated.lines.length,
     customerName: validated.customerName,

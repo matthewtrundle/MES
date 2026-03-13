@@ -5,6 +5,17 @@ import { Role } from '@prisma/client';
 import { User, Site } from '@prisma/client';
 export type UserWithSites = User & { sites: Site[] };
 
+// Import client-safe role constants (no DB deps) and re-export for backward compat
+import {
+  ALL_ROLES as _ALL_ROLES,
+  ROLE_PERMISSIONS as _ROLE_PERMISSIONS,
+  roleHasPermission,
+  getRoleDisplayName as _getRoleDisplayName,
+  type AppRole,
+} from './roles';
+
+export { _ALL_ROLES as ALL_ROLES, _ROLE_PERMISSIONS as ROLE_PERMISSIONS, roleHasPermission, _getRoleDisplayName as getRoleDisplayName, type AppRole };
+
 const clerkEnabled =
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
   !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('REPLACE_ME');
@@ -128,80 +139,6 @@ export async function hasAnyRole(roles: Role[]): Promise<boolean> {
 }
 
 /**
- * All possible roles (superset — includes roles that may not yet be in Prisma enum)
- */
-export type AppRole =
-  | 'operator'
-  | 'supervisor'
-  | 'admin'
-  | 'buyer'
-  | 'receiving_mgr'
-  | 'qa_inspector'
-  | 'supply_chain_mgr'
-  | 'shipping_coordinator';
-
-export const ALL_ROLES: AppRole[] = [
-  'admin',
-  'supervisor',
-  'operator',
-  'buyer',
-  'receiving_mgr',
-  'qa_inspector',
-  'supply_chain_mgr',
-  'shipping_coordinator',
-];
-
-/**
- * Permission-based access control map
- */
-export const ROLE_PERMISSIONS: Record<AppRole, string[]> = {
-  admin: ['*'],
-  supervisor: [
-    'production:read', 'production:write',
-    'quality:read', 'quality:write',
-    'ncr:disposition',
-    'inventory:read',
-    'reports:read',
-  ],
-  operator: ['production:read', 'production:write', 'quality:read'],
-  buyer: [
-    'purchase_orders:read', 'purchase_orders:write',
-    'suppliers:read', 'suppliers:write',
-    'inventory:read',
-  ],
-  receiving_mgr: [
-    'receiving:read', 'receiving:write',
-    'inventory:read', 'inventory:write',
-    'purchase_orders:read',
-  ],
-  qa_inspector: [
-    'quality:read', 'quality:write',
-    'iqc:read', 'iqc:write',
-    'ncr:read',
-  ],
-  supply_chain_mgr: [
-    'inventory:read', 'inventory:write',
-    'purchase_orders:read',
-    'suppliers:read',
-    'reports:read',
-  ],
-  shipping_coordinator: [
-    'shipping:read', 'shipping:write',
-    'production:read',
-  ],
-};
-
-/**
- * Check if a role has a specific permission
- */
-export function roleHasPermission(role: AppRole, permission: string): boolean {
-  const perms = ROLE_PERMISSIONS[role];
-  if (!perms) return false;
-  if (perms.includes('*')) return true;
-  return perms.includes(permission);
-}
-
-/**
  * Check if the current user has a specific permission
  */
 export async function hasPermission(permission: string): Promise<boolean> {
@@ -233,7 +170,6 @@ export async function requirePermission(permission: string) {
  * Role hierarchy helpers
  */
 export function isOperatorOrAbove(role: Role): boolean {
-  // Core production roles + roles that interact with production data
   return [
     'operator', 'supervisor', 'admin',
     'qa_inspector', 'shipping_coordinator',
@@ -248,23 +184,6 @@ export function isSupervisorOrAbove(role: Role): boolean {
 
 export function isAdmin(role: Role): boolean {
   return role === 'admin';
-}
-
-/**
- * Get role display name
- */
-export function getRoleDisplayName(role: Role | AppRole): string {
-  const displayNames: Record<string, string> = {
-    operator: 'Operator',
-    supervisor: 'Supervisor',
-    admin: 'Administrator',
-    buyer: 'Buyer',
-    receiving_mgr: 'Receiving Manager',
-    qa_inspector: 'QA Inspector',
-    supply_chain_mgr: 'Supply Chain Manager',
-    shipping_coordinator: 'Shipping Coordinator',
-  };
-  return displayNames[role] ?? role;
 }
 
 /**

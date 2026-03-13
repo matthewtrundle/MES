@@ -13,11 +13,13 @@ import {
 } from '@/lib/validation/po-schemas';
 
 // ── Get next PO number ────────────────────────────────────────────
-export async function getNextPoNumber(): Promise<string> {
+export async function getNextPoNumber(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0] = prisma
+): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `PO-${year}-`;
 
-  const lastPo = await prisma.purchaseOrder.findFirst({
+  const lastPo = await tx.purchaseOrder.findFirst({
     where: {
       poNumber: { startsWith: prefix },
     },

@@ -1,6 +1,6 @@
 'use server';
 
-import { requireUser } from '@/lib/auth/rbac';
+import { requireUser, requireRole } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db/prisma';
 import { revalidatePath } from 'next/cache';
 import {
@@ -12,6 +12,7 @@ import {
 
 // ── Create Notification ─────────────────────────────────────────
 export async function createNotification(data: CreateNotificationInput) {
+  await requireUser();
   const validated = createNotificationSchema.parse(data);
 
   const notification = await prisma.notification.create({
@@ -142,6 +143,7 @@ export async function createBulkNotifications(
   userIds: string[],
   data: Omit<CreateNotificationInput, 'userId'>
 ) {
+  await requireRole(['admin', 'supervisor']);
   const notifications = await prisma.notification.createMany({
     data: userIds.map((userId) => ({
       userId,

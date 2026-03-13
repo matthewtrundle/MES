@@ -205,13 +205,12 @@ export async function importPurchaseOrdersFromCSV(
   const createdPoIds: string[] = [];
 
   for (const group of poGroups.values()) {
-    const poNumber = await getNextPoNumber();
-
     const totalValue = group.lines.reduce((sum, line) => {
       return sum + (line.unitCost ?? 0) * line.qty;
     }, 0);
 
     const po = await prisma.$transaction(async (tx) => {
+      const poNumber = await getNextPoNumber(tx);
       return tx.purchaseOrder.create({
         data: {
           poNumber,
@@ -249,7 +248,7 @@ export async function importPurchaseOrdersFromCSV(
     createdCount++;
 
     await logAuditTrail(user.id, 'create', 'PurchaseOrder', po.id, null, {
-      poNumber,
+      poNumber: po.poNumber,
       supplierId: group.supplierId,
       lineItemCount: group.lines.length,
       totalValue,
@@ -265,7 +264,7 @@ export async function importPurchaseOrdersFromCSV(
         payload: {
           action: 'purchase_order_imported_csv',
           purchaseOrderId: po.id,
-          poNumber,
+          poNumber: po.poNumber,
           supplierId: group.supplierId,
           totalValue,
           lineItemCount: group.lines.length,

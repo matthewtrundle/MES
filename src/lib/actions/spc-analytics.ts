@@ -62,7 +62,9 @@ export interface DriftAlert {
 function calculateStats(values: number[]): { mean: number; sigma: number } {
   if (values.length === 0) return { mean: 0, sigma: 0 };
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+  // Use sample variance (N-1) for SPC — Bessel's correction
+  const divisor = values.length > 1 ? values.length - 1 : 1;
+  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / divisor;
   const sigma = Math.sqrt(variance);
   return { mean, sigma };
 }

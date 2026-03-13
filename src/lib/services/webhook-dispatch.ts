@@ -7,6 +7,27 @@ const MAX_ATTEMPTS = 3;
 const BACKOFF_DELAYS = [1000, 5000, 25000]; // 1s, 5s, 25s
 const REQUEST_TIMEOUT_MS = 10000;
 
+// Block requests to private/internal networks (SSRF protection)
+const BLOCKED_HOSTS = [
+  /^localhost$/i,
+  /^127\.\d+\.\d+\.\d+$/,
+  /^10\.\d+\.\d+\.\d+$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+  /^192\.168\.\d+\.\d+$/,
+  /^0\.0\.0\.0$/,
+  /^\[?::1\]?$/,
+  /^169\.254\.\d+\.\d+$/, // link-local
+];
+
+function isBlockedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return BLOCKED_HOSTS.some((pattern) => pattern.test(parsed.hostname));
+  } catch {
+    return true; // block unparseable URLs
+  }
+}
+
 /**
  * Dispatch a webhook event to all active subscriptions that match the event type.
  * Creates WebhookDelivery records and sends HTTP POST requests.
@@ -64,6 +85,20 @@ export async function deliverWebhook(
   payload: Record<string, unknown>,
   deliveryId: string
 ): Promise<void> {
+  // SSRF protection: block delivery to internal/private networks
+  if (isBlockedUrl(subscription.url)) {
+    await prisma.webhookDelivery.update({
+      where: { id: deliveryId },
+      data: {
+        status: 'failed',
+        attempts: 1,
+        lastAttemptAt: new Date(),
+        responseBody: 'Error: URL targets a blocked internal/private network',
+      },
+    });
+    return;
+  }
+
   const webhookId = deliveryId;
   const timestamp = Math.floor(Date.now() / 1000).toString();
 

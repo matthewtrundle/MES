@@ -37,6 +37,33 @@ function daysBetween(start: Date, end: Date): number {
   return Math.round((end.getTime() - start.getTime()) / msPerDay);
 }
 
+/**
+ * Build a map of PO number → latest material lot receivedAt date.
+ * Uses the purchaseOrderNumber field on MaterialLot.
+ */
+async function getReceiveDatesByPO(poNumbers: string[]): Promise<Map<string, Date>> {
+  if (poNumbers.length === 0) return new Map();
+
+  const lots = await prisma.materialLot.findMany({
+    where: {
+      purchaseOrderNumber: { in: poNumbers },
+    },
+    select: {
+      purchaseOrderNumber: true,
+      receivedAt: true,
+    },
+    orderBy: { receivedAt: 'desc' },
+  });
+
+  const map = new Map<string, Date>();
+  for (const lot of lots) {
+    if (lot.purchaseOrderNumber && !map.has(lot.purchaseOrderNumber)) {
+      map.set(lot.purchaseOrderNumber, lot.receivedAt);
+    }
+  }
+  return map;
+}
+
 // ── Get Lead Time Analytics (by supplier) ────────────────────────────
 
 export async function getLeadTimeAnalytics(): Promise<SupplierLeadTimeData[]> {
@@ -63,6 +90,9 @@ export async function getLeadTimeAnalytics(): Promise<SupplierLeadTimeData[]> {
     orderBy: { orderDate: 'desc' },
   });
 
+  // Get actual receive dates from material lots
+  const receiveDateMap = await getReceiveDatesByPO(receivedPOs.map(po => po.poNumber));
+
   // Group by supplier
   const supplierMap = new Map<string, {
     supplier: { id: string; name: string; supplierId: string };
@@ -72,9 +102,12 @@ export async function getLeadTimeAnalytics(): Promise<SupplierLeadTimeData[]> {
   }>();
 
   for (const po of receivedPOs) {
-    const actualDays = daysBetween(po.orderDate, po.updatedAt);
-    const avgExpectedForPO = po.lineItems.length > 0
-      ? po.lineItems.reduce((sum, li) => sum + (li.expectedLeadTimeDays ?? 0), 0) / po.lineItems.filter(li => li.expectedLeadTimeDays != null).length
+    const receiveDate = receiveDateMap.get(po.poNumber) ?? po.updatedAt;
+    const actualDays = daysBetween(po.orderDate, receiveDate);
+
+    const itemsWithExpected = po.lineItems.filter(li => li.expectedLeadTimeDays != null);
+    const avgExpectedForPO = itemsWithExpected.length > 0
+      ? itemsWithExpected.reduce((sum, li) => sum + (li.expectedLeadTimeDays ?? 0), 0) / itemsWithExpected.length
       : 0;
 
     let entry = supplierMap.get(po.supplierId);
@@ -90,8 +123,7 @@ export async function getLeadTimeAnalytics(): Promise<SupplierLeadTimeData[]> {
 
     entry.actualLeadTimes.push(actualDays);
 
-    const expectedItems = po.lineItems.filter(li => li.expectedLeadTimeDays != null);
-    if (expectedItems.length > 0) {
+    if (itemsWithExpected.length > 0) {
       entry.expectedLeadTimes.push(avgExpectedForPO);
       if (actualDays <= avgExpectedForPO) {
         entry.onTimeCount += 1;
@@ -153,12 +185,17 @@ export async function getLeadTimeByPart(supplierId?: string): Promise<PartLeadTi
       description: true,
       purchaseOrder: {
         select: {
+          poNumber: true,
           orderDate: true,
           updatedAt: true,
         },
       },
     },
   });
+
+  // Get actual receive dates from material lots
+  const poNumbers = [...new Set(lineItems.map(li => li.purchaseOrder.poNumber))];
+  const receiveDateMap = await getReceiveDatesByPO(poNumbers);
 
   // Group by part number
   const partMap = new Map<string, {
@@ -168,7 +205,8 @@ export async function getLeadTimeByPart(supplierId?: string): Promise<PartLeadTi
   }>();
 
   for (const item of lineItems) {
-    const actualDays = daysBetween(item.purchaseOrder.orderDate, item.purchaseOrder.updatedAt);
+    const receiveDate = receiveDateMap.get(item.purchaseOrder.poNumber) ?? item.purchaseOrder.updatedAt;
+    const actualDays = daysBetween(item.purchaseOrder.orderDate, receiveDate);
 
     let entry = partMap.get(item.partNumber);
     if (!entry) {
@@ -219,17 +257,22 @@ export async function getLeadTimeTrend(months: number = 6): Promise<MonthlyLeadT
       orderDate: { gte: since },
     },
     select: {
+      poNumber: true,
       orderDate: true,
       updatedAt: true,
     },
     orderBy: { orderDate: 'asc' },
   });
 
+  // Get actual receive dates from material lots
+  const receiveDateMap = await getReceiveDatesByPO(receivedPOs.map(po => po.poNumber));
+
   // Group by month
   const monthMap = new Map<string, { totalDays: number; count: number }>();
 
   for (const po of receivedPOs) {
-    const actualDays = daysBetween(po.orderDate, po.updatedAt);
+    const receiveDate = receiveDateMap.get(po.poNumber) ?? po.updatedAt;
+    const actualDays = daysBetween(po.orderDate, receiveDate);
     const monthKey = po.orderDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
 
     let entry = monthMap.get(monthKey);

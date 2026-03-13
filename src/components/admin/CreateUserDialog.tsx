@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ALL_ROLES, getRoleDisplayName } from '@/lib/auth/rbac';
-import type { AppRole } from '@/lib/auth/rbac';
+import { ALL_ROLES, getRoleDisplayName } from '@/lib/auth/roles';
+import type { AppRole } from '@/lib/auth/roles';
 import { createUser } from '@/lib/actions/admin/user-management';
 import { toast } from 'sonner';
 
