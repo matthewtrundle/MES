@@ -7,6 +7,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { SimulationControl } from '@/components/supervisor/SimulationControl';
 import { DashboardTabs } from '@/components/supervisor/DashboardTabs';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 30;
 
 async function getDashboardData() {

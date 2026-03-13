@@ -2,6 +2,8 @@ import { getInspectionQueue, getCompletedInspections } from '@/lib/actions/iqc';
 import { IQCInspectionQueue } from '@/components/admin/IQCInspectionQueue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function IQCPage() {
   const [queue, completed] = await Promise.all([
     getInspectionQueue(),

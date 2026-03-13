@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { Icons, UnitStatusBadge, StatusIndicator } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 30;
 
 interface StationPageProps {

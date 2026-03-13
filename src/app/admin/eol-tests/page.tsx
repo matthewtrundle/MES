@@ -3,6 +3,8 @@ import { EolTestSuiteTable } from '@/components/admin/EolTestSuiteTable';
 import { EolTestSuiteForm } from '@/components/admin/EolTestSuiteForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function EolTestsPage() {
   const [suites, routings] = await Promise.all([
     getEolTestSuites(),

@@ -2,9 +2,11 @@ import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 
-const FPYTrendChart = dynamic(
+export const dynamic = 'force-dynamic';
+
+const FPYTrendChart = nextDynamic(
   () => import('@/components/supervisor/FPYTrendChart').then(mod => mod.FPYTrendChart),
   { loading: () => <div className="h-[250px] animate-pulse rounded bg-gray-100" /> }
 );

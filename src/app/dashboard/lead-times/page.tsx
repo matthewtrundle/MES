@@ -10,6 +10,8 @@ import {
 
 export const revalidate = 60;
 
+export const dynamic = 'force-dynamic';
+
 export default async function LeadTimesPage() {
   const [supplierData, partData, trendData] = await Promise.all([
     getLeadTimeAnalytics(),

@@ -5,6 +5,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { OEEGauge } from '@/components/supervisor/OEEGauge';
 import { OEESparkline } from '@/components/supervisor/OEESparkline';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 async function getOEEData() {

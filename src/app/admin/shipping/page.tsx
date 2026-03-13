@@ -1,6 +1,8 @@
 import { getShippableWorkOrders, getShipments } from '@/lib/actions/shipping';
 import { ShippingDashboard } from '@/components/admin/ShippingDashboard';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ShippingPage() {
   const [shippableWorkOrders, shipmentsResult] = await Promise.all([
     getShippableWorkOrders(),

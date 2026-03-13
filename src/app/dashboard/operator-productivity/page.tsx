@@ -5,6 +5,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { OperatorProductivity } from '@/components/supervisor/OperatorProductivity';
 import { getOperatorProductivity } from '@/lib/actions/operator-analytics';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 export default async function OperatorProductivityPage() {

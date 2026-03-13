@@ -2,6 +2,8 @@ import { getRoutingsWithBom } from '@/lib/actions/bom';
 import { getStationsForQualityChecks } from '@/lib/actions/admin/quality-checks';
 import { BomEditor } from '@/components/admin/BomEditor';
 
+export const dynamic = 'force-dynamic';
+
 export default async function BomPage() {
   const [routings, stations] = await Promise.all([
     getRoutingsWithBom(),

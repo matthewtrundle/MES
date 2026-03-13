@@ -1,6 +1,8 @@
 import { getAuditLogs, getAuditLogStats, getAuditLogFilterOptions } from '@/lib/actions/admin/audit-logs';
 import { AuditLogViewer } from '@/components/admin/AuditLogViewer';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AuditLogPage() {
   const [initialData, stats, filterOptions] = await Promise.all([
     getAuditLogs({ page: 1, pageSize: 25 }),

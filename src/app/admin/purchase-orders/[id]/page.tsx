@@ -13,6 +13,8 @@ import { PurchaseOrderDetailActions } from '@/components/admin/PurchaseOrderDeta
 import { DiscrepancyAlert } from '@/components/admin/DiscrepancyAlert';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 function getStatusBadge(status: string) {
   switch (status) {
     case 'draft':

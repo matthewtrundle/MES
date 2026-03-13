@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { TraceabilitySearch } from '@/components/supervisor/TraceabilitySearch';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 export default function TraceabilityPage() {

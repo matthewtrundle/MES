@@ -5,6 +5,8 @@ import { LiveTicker } from '@/components/andon/LiveTicker';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { Icons } from '@/components/icons';
 
+export const dynamic = 'force-dynamic';
+
 async function getAndonData() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Icons, StatusIndicator, UnitStatusBadge } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 30;
 
 async function getWIPData() {

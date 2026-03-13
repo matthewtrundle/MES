@@ -2,6 +2,8 @@ import { getUsers, getStationsForUserAssignment, getSitesForUserAssignment } fro
 import { UserManagement } from '@/components/admin/UserManagement';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function UsersPage() {
   const [users, stations, sites] = await Promise.all([
     getUsers(),

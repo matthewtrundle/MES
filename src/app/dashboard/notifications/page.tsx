@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db/prisma';
 import { NotificationList } from '@/components/admin/NotificationList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 30;
 
 export default async function NotificationsPage() {

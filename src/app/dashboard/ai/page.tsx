@@ -5,6 +5,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { AIInsightsPanel } from '@/components/supervisor/AIInsightsPanel';
 import { AIChatWidget } from '@/components/supervisor/AIChatWidget';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 async function getAIStats() {

@@ -3,6 +3,8 @@ import { QualityCheckTable } from '@/components/admin/QualityCheckTable';
 import { QualityCheckForm } from '@/components/admin/QualityCheckForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function QualityChecksPage() {
   const [definitions, stations] = await Promise.all([
     getQualityCheckDefinitions(),

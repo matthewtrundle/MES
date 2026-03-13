@@ -4,6 +4,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { SPCDashboard } from '@/components/supervisor/SPCDashboard';
 import { getSPCData } from '@/lib/actions/spc-analytics';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 async function getSPCSummary() {

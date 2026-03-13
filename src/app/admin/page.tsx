@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db/prisma';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 async function getAdminStats() {
   const [
     stationCount,

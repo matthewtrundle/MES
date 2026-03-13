@@ -5,6 +5,8 @@ import { PurchaseOrderForm } from '@/components/admin/PurchaseOrderForm';
 import { POImportDialog } from '@/components/admin/POImportDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PurchaseOrdersPage() {
   const [purchaseOrders, suppliers] = await Promise.all([
     getPurchaseOrders(),

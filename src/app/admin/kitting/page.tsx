@@ -1,6 +1,8 @@
 import { getWorkOrdersWithKitStatus } from '@/lib/actions/kitting';
 import { KitBuilder } from '@/components/admin/KitBuilder';
 
+export const dynamic = 'force-dynamic';
+
 export default async function KittingPage() {
   const workOrders = await getWorkOrdersWithKitStatus();
 

@@ -4,6 +4,8 @@ import { ProcessStepForm } from '@/components/admin/ProcessStepForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { STEP_CATEGORIES } from '@/lib/types/process-steps';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProcessStepsPage() {
   const [definitions, stations] = await Promise.all([
     getProcessStepDefinitions(),

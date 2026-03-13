@@ -1,6 +1,8 @@
 import { listApiKeys } from '@/lib/actions/api-keys';
 import { ApiKeyManager } from '@/components/admin/ApiKeyManager';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ApiKeysPage() {
   const apiKeys = await listApiKeys();
 

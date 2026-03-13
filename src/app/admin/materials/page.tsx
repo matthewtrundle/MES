@@ -2,6 +2,8 @@ import { getMaterialLotsForAdmin } from '@/lib/actions/material-receiving';
 import { MaterialReceivingForm } from '@/components/admin/MaterialReceivingForm';
 import { MaterialLotTable } from '@/components/admin/MaterialLotTable';
 
+export const dynamic = 'force-dynamic';
+
 export default async function MaterialsPage() {
   const lots = await getMaterialLotsForAdmin();
 

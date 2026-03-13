@@ -4,6 +4,8 @@ import { NCRAnalyticsDashboard } from '@/components/supervisor/NCRAnalyticsDashb
 import { DashboardTabs } from '@/components/supervisor/DashboardTabs';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 export default function NCRAnalyticsPage() {

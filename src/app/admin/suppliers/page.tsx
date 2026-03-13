@@ -3,6 +3,8 @@ import { SupplierTable } from '@/components/admin/SupplierTable';
 import { SupplierForm } from '@/components/admin/SupplierForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SuppliersPage() {
   const suppliers = await getSuppliers();
 

@@ -4,6 +4,8 @@ import type { DataFieldDefinition } from '@/lib/types/process-steps';
 import { Badge } from '@/components/ui/badge';
 import { TravelerPrintButton } from './TravelerPrintButton';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 interface TravelerPageProps {

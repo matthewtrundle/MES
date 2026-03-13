@@ -3,6 +3,8 @@ import { CTQTable } from '@/components/admin/CTQTable';
 import { CTQForm } from '@/components/admin/CTQForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function CTQPage() {
   const definitions = await getCTQDefinitions();
   const partRevisions = await getDistinctPartNumbers();

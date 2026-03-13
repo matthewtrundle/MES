@@ -5,6 +5,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { InventoryReports } from '@/components/supervisor/InventoryReports';
 import { getStockVsReorder } from '@/lib/actions/inventory-reports';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 export default async function InventoryReportsPage() {

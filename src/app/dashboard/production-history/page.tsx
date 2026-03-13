@@ -6,6 +6,8 @@ import { ProductionHistoryBrowser } from '@/components/supervisor/ProductionHist
 import { searchProductionHistory, getProductionSummary } from '@/lib/actions/production-history';
 import { prisma } from '@/lib/db/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 60;
 
 export default async function ProductionHistoryPage() {

@@ -10,6 +10,8 @@ import { DowntimePanel } from '@/components/operator/DowntimePanel';
 import { Icons } from '@/components/icons';
 import { getBomForStation } from '@/lib/actions/bom';
 
+export const dynamic = 'force-dynamic';
+
 interface StationPageProps {
   params: Promise<{ stationId: string }>;
 }

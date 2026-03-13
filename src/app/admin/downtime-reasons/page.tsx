@@ -3,6 +3,8 @@ import { DowntimeReasonTable } from '@/components/admin/DowntimeReasonTable';
 import { DowntimeReasonForm } from '@/components/admin/DowntimeReasonForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DowntimeReasonsPage() {
   const [reasons, sites] = await Promise.all([
     getDowntimeReasonsForAdmin(),

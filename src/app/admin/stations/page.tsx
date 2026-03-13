@@ -4,6 +4,8 @@ import { StationTable } from '@/components/admin/StationTable';
 import { StationForm } from '@/components/admin/StationForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function StationsPage() {
   const [stations, sites] = await Promise.all([
     getStationsForAdmin(),

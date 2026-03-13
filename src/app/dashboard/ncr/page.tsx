@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { NCRList } from '@/components/supervisor/NCRList';
 
+export const dynamic = 'force-dynamic';
+
 export const revalidate = 30;
 
 async function getNCRData() {
