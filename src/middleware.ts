@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getSecurityHeaders } from '@/lib/middleware/security';
 
 // Skip Clerk entirely when publishable key is not configured (demo mode)
 const clerkEnabled =
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
   !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('REPLACE_ME');
 
+/**
+ * Apply security headers to a response.
+ */
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  const headers = getSecurityHeaders();
+  for (const [key, value] of Object.entries(headers)) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
+
 async function demoMiddleware(_request: NextRequest) {
   // In demo mode, allow all routes without auth
-  return NextResponse.next();
+  const response = NextResponse.next();
+  return applySecurityHeaders(response);
 }
 
 async function clerkAuthMiddleware(request: NextRequest) {
@@ -29,7 +42,8 @@ async function clerkAuthMiddleware(request: NextRequest) {
 
   const middleware = clerkMiddleware(async (auth, req) => {
     if (isPublicRoute(req)) {
-      return NextResponse.next();
+      const response = NextResponse.next();
+      return applySecurityHeaders(response);
     }
 
     const { userId } = await auth();
@@ -39,7 +53,8 @@ async function clerkAuthMiddleware(request: NextRequest) {
       return NextResponse.redirect(signInUrl);
     }
 
-    return NextResponse.next();
+    const response = NextResponse.next();
+    return applySecurityHeaders(response);
   });
 
   return middleware(request, {} as any);

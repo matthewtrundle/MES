@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { UserWithSites } from '@/lib/auth/rbac';
 import { NotificationBell } from '@/components/ui/NotificationBell';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const clerkEnabled =
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
@@ -12,7 +13,7 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ user }: AdminHeaderProps) {
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between">
+    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 flex items-center justify-between">
       <div className="flex items-center gap-4">
         <Link href="/admin" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -22,17 +23,18 @@ export function AdminHeader({ user }: AdminHeaderProps) {
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-slate-900">MES Admin</h1>
-            <p className="text-xs text-slate-500">Configuration & Management</p>
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">MES Admin</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Configuration & Management</p>
           </div>
         </Link>
       </div>
 
       <div className="flex items-center gap-4">
+        <ThemeToggle />
         <NotificationBell />
         <div className="text-right mr-2">
-          <p className="text-sm font-medium text-slate-900">{user.name}</p>
-          <p className="text-xs text-slate-500 capitalize">{user.role}</p>
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{user.name}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user.role}</p>
         </div>
         {clerkEnabled ? (
           <DynamicUserButton />

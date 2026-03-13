@@ -186,13 +186,40 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    name: 'Users',
+    href: '/admin/users',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Audit Log',
+    href: '/admin/audit-log',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+  },
+  {
+    name: 'API Docs',
+    href: '/admin/api-docs',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+    ),
+  },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 min-h-[calc(100vh-4rem)] bg-white border-r border-slate-200">
+    <aside className="w-64 min-h-[calc(100vh-4rem)] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">
       <nav className="p-4 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href ||
@@ -205,12 +232,12 @@ export function AdminSidebar() {
               className={cn(
                 'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
               )}
             >
               <span className={cn(
-                isActive ? 'text-blue-600' : 'text-slate-400'
+                isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
               )}>
                 {item.icon}
               </span>
@@ -220,21 +247,21 @@ export function AdminSidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-200 mt-4">
-        <div className="bg-slate-50 rounded-lg p-4">
-          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700 mt-4">
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+          <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
             Quick Links
           </h4>
           <div className="space-y-2">
             <Link
               href="/dashboard"
-              className="block text-sm text-blue-600 hover:text-blue-800"
+              className="block text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
             >
               Supervisor Dashboard
             </Link>
             <Link
               href="/station"
-              className="block text-sm text-blue-600 hover:text-blue-800"
+              className="block text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
             >
               Operator View
             </Link>
