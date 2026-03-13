@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PurchaseOrderDetailActions } from '@/components/admin/PurchaseOrderDetailActions';
+import { DiscrepancyAlert } from '@/components/admin/DiscrepancyAlert';
 import Link from 'next/link';
 
 function getStatusBadge(status: string) {
@@ -172,6 +173,11 @@ export default async function PurchaseOrderDetailPage({
             <p className="text-sm text-slate-700 whitespace-pre-wrap">{po.notes}</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Receiving Discrepancies */}
+      {['partially_received', 'fully_received'].includes(po.status) && (
+        <DiscrepancyAlert poId={po.id} />
       )}
 
       {/* Line Items */}

@@ -48,18 +48,7 @@ export async function exportWorkOrders(filters?: ExportFilters): Promise<string>
   });
 
   const headers = ['orderNumber', 'productCode', 'status', 'qtyOrdered', 'qtyCompleted', 'customerName', 'dueDate', 'createdAt'];
-  const rows = workOrders.map(wo => [
-    wo.orderNumber,
-    wo.productCode,
-    wo.status,
-    wo.qtyOrdered,
-    wo.qtyCompleted,
-    wo.customerName,
-    wo.dueDate,
-    wo.createdAt,
-  ]);
-
-  return toCSV(headers, rows);
+  return toCSV(workOrders as unknown as Record<string, unknown>[], headers);
 }
 
 // ── Units ───────────────────────────────────────────────────────────
@@ -77,16 +66,15 @@ export async function exportUnits(filters?: ExportFilters): Promise<string> {
     },
   });
 
-  const headers = ['serialNumber', 'workOrder', 'status', 'currentStationId', 'createdAt'];
-  const rows = units.map(u => [
-    u.serialNumber,
-    u.workOrder.orderNumber,
-    u.status,
-    u.currentStationId,
-    u.createdAt,
-  ]);
+  const rows = units.map(u => ({
+    serialNumber: u.serialNumber,
+    workOrder: u.workOrder.orderNumber,
+    status: u.status,
+    currentStationId: u.currentStationId,
+    createdAt: u.createdAt,
+  }));
 
-  return toCSV(headers, rows);
+  return toCSV(rows, ['serialNumber', 'workOrder', 'status', 'currentStationId', 'createdAt']);
 }
 
 // ── NCRs ────────────────────────────────────────────────────────────
@@ -109,17 +97,7 @@ export async function exportNCRs(filters?: ExportFilters): Promise<string> {
     },
   });
 
-  const headers = ['ncrNumber', 'defectType', 'disposition', 'status', 'source', 'createdAt'];
-  const rows = ncrs.map(n => [
-    n.ncrNumber,
-    n.defectType,
-    n.disposition,
-    n.status,
-    n.source,
-    n.createdAt,
-  ]);
-
-  return toCSV(headers, rows);
+  return toCSV(ncrs as unknown as Record<string, unknown>[], ['ncrNumber', 'defectType', 'disposition', 'status', 'source', 'createdAt']);
 }
 
 // ── Inventory (Material Lots) ───────────────────────────────────────
@@ -143,18 +121,7 @@ export async function exportInventory(filters?: ExportFilters): Promise<string> 
     },
   });
 
-  const headers = ['lotNumber', 'materialCode', 'qtyReceived', 'qtyRemaining', 'status', 'supplier', 'receivedAt'];
-  const rows = lots.map(l => [
-    l.lotNumber,
-    l.materialCode,
-    l.qtyReceived,
-    l.qtyRemaining,
-    l.status,
-    l.supplier,
-    l.receivedAt,
-  ]);
-
-  return toCSV(headers, rows);
+  return toCSV(lots as unknown as Record<string, unknown>[], ['lotNumber', 'materialCode', 'qtyReceived', 'qtyRemaining', 'status', 'supplier', 'receivedAt']);
 }
 
 // ── Shipments ───────────────────────────────────────────────────────
@@ -174,18 +141,17 @@ export async function exportShipments(filters?: ExportFilters): Promise<string> 
     orderBy: { createdAt: 'desc' },
   });
 
-  const headers = ['shipmentNumber', 'workOrderNumber', 'customerName', 'carrier', 'trackingNumber', 'status', 'shipDate'];
-  const rows = shipments.map(s => [
-    s.shipmentNumber,
-    s.workOrder.orderNumber,
-    s.customerName,
-    s.carrier,
-    s.trackingNumber,
-    s.status,
-    s.shipDate,
-  ]);
+  const rows = shipments.map(s => ({
+    shipmentNumber: s.shipmentNumber,
+    workOrderNumber: s.workOrder.orderNumber,
+    customerName: s.customerName,
+    carrier: s.carrier,
+    trackingNumber: s.trackingNumber,
+    status: s.status,
+    shipDate: s.shipDate,
+  }));
 
-  return toCSV(headers, rows);
+  return toCSV(rows, ['shipmentNumber', 'workOrderNumber', 'customerName', 'carrier', 'trackingNumber', 'status', 'shipDate']);
 }
 
 // ── Production History (unit operation executions) ──────────────────
@@ -206,19 +172,18 @@ export async function exportProductionHistory(filters?: ExportFilters): Promise<
     },
   });
 
-  const headers = ['serialNumber', 'station', 'operationSequence', 'operator', 'startedAt', 'completedAt', 'cycleTimeMinutes', 'result'];
-  const rows = executions.map(e => [
-    e.unit.serialNumber,
-    e.station.name,
-    e.operation.sequence,
-    e.operator.name,
-    e.startedAt,
-    e.completedAt,
-    e.cycleTimeMinutes,
-    e.result,
-  ]);
+  const rows = executions.map(e => ({
+    serialNumber: e.unit.serialNumber,
+    station: e.station.name,
+    operationSequence: e.operation.sequence,
+    operator: e.operator.name,
+    startedAt: e.startedAt,
+    completedAt: e.completedAt,
+    cycleTimeMinutes: e.cycleTimeMinutes,
+    result: e.result,
+  }));
 
-  return toCSV(headers, rows);
+  return toCSV(rows, ['serialNumber', 'station', 'operationSequence', 'operator', 'startedAt', 'completedAt', 'cycleTimeMinutes', 'result']);
 }
 
 // ── Quality Checks ──────────────────────────────────────────────────
@@ -238,15 +203,14 @@ export async function exportQualityChecks(filters?: ExportFilters): Promise<stri
     },
   });
 
-  const headers = ['serialNumber', 'checkName', 'checkType', 'result', 'operator', 'timestamp'];
-  const rows = results.map(r => [
-    r.unit.serialNumber,
-    r.definition.name,
-    r.definition.checkType,
-    r.result,
-    r.operator.name,
-    r.timestamp,
-  ]);
+  const rows = results.map(r => ({
+    serialNumber: r.unit.serialNumber,
+    checkName: r.definition.name,
+    checkType: r.definition.checkType,
+    result: r.result,
+    operator: r.operator.name,
+    timestamp: r.timestamp,
+  }));
 
-  return toCSV(headers, rows);
+  return toCSV(rows, ['serialNumber', 'checkName', 'checkType', 'result', 'operator', 'timestamp']);
 }

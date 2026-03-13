@@ -379,6 +379,84 @@ export async function getReceivingHistory(days: number = 30) {
   return lots;
 }
 
+// ── Discrepancy Summary ─────────────────────────────────────────
+
+/**
+ * Get a summary of receiving discrepancies across all received POs.
+ */
+export async function getReceivingDiscrepancySummary() {
+  await requireRole(['admin', 'supervisor']);
+
+  const pos = await prisma.purchaseOrder.findMany({
+    where: {
+      status: { in: ['partially_received', 'fully_received'] },
+    },
+    include: {
+      supplier: { select: { name: true } },
+      lineItems: {
+        select: {
+          id: true,
+          partNumber: true,
+          qtyOrdered: true,
+          qtyReceived: true,
+        },
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  let withDiscrepancies = 0;
+  let overShipped = 0;
+  let shortShipped = 0;
+  const details: Array<{
+    poId: string;
+    poNumber: string;
+    supplierName: string;
+    lineCount: number;
+    discrepancyCount: number;
+  }> = [];
+
+  for (const po of pos) {
+    let poHasDiscrepancy = false;
+    let discrepancyCount = 0;
+
+    for (const li of po.lineItems) {
+      const isOver = li.qtyReceived > li.qtyOrdered;
+      const isShort = li.qtyReceived < li.qtyOrdered && li.qtyReceived > 0;
+
+      if (isOver) {
+        overShipped++;
+        discrepancyCount++;
+        poHasDiscrepancy = true;
+      }
+      if (isShort) {
+        shortShipped++;
+        discrepancyCount++;
+        poHasDiscrepancy = true;
+      }
+    }
+
+    if (poHasDiscrepancy) {
+      withDiscrepancies++;
+      details.push({
+        poId: po.id,
+        poNumber: po.poNumber,
+        supplierName: po.supplier.name,
+        lineCount: po.lineItems.length,
+        discrepancyCount,
+      });
+    }
+  }
+
+  return {
+    totalPOs: pos.length,
+    withDiscrepancies,
+    overShipped,
+    shortShipped,
+    details,
+  };
+}
+
 // ── Discrepancies ────────────────────────────────────────────────
 
 /**

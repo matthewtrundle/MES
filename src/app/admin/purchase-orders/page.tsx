@@ -2,6 +2,7 @@ import { getPurchaseOrders } from '@/lib/actions/purchase-orders';
 import { getSuppliers } from '@/lib/actions/admin/suppliers';
 import { PurchaseOrderTable } from '@/components/admin/PurchaseOrderTable';
 import { PurchaseOrderForm } from '@/components/admin/PurchaseOrderForm';
+import { POImportDialog } from '@/components/admin/POImportDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default async function PurchaseOrdersPage() {
@@ -19,7 +20,10 @@ export default async function PurchaseOrdersPage() {
             Create and manage purchase orders for materials procurement
           </p>
         </div>
-        <PurchaseOrderForm suppliers={suppliers} />
+        <div className="flex items-center gap-2">
+          <POImportDialog />
+          <PurchaseOrderForm suppliers={suppliers} />
+        </div>
       </div>
 
       <Card>

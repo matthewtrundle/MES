@@ -54,6 +54,7 @@ export function DashboardTabs() {
     { id: 'shift', label: 'Shift Report', href: '/dashboard/shift-report', icon: 'document' },
     { id: 'ai', label: 'AI Insights', href: '/dashboard/ai', icon: 'ai' },
     { id: 'quality', label: 'Quality', href: '/dashboard/quality', icon: 'qualityPass' },
+    { id: 'lead-times', label: 'Lead Times', href: '/dashboard/lead-times', icon: 'clock' },
   ];
 
   const isActive = (href: string) => pathname === href;
