@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { TraceabilitySearch } from '@/components/supervisor/TraceabilitySearch';
 
+export const revalidate = 60;
+
 export default function TraceabilityPage() {
   return (
     <div className="container mx-auto p-6">

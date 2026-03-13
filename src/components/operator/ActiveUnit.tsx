@@ -5,6 +5,7 @@ import { Unit, WorkOrder, UnitOperationExecution, WorkOrderOperation, User, Qual
 import { Button } from '@/components/ui/button';
 import { completeOperation } from '@/lib/actions/units';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { QualityCheckDialog } from './QualityCheckDialog';
 import { MaterialConsumptionDialog } from './MaterialConsumptionDialog';
 import { StationBomChecklist } from './StationBomChecklist';
@@ -90,6 +91,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
     startTransition(async () => {
       try {
         await completeOperation(activeExecution.id, result);
+        toast.success(result === 'pass' ? 'Operation completed successfully' : 'Operation marked as failed');
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to complete operation');

@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { PrintButton } from '@/components/supervisor/PrintButton';
 
+export const revalidate = 30;
+
 async function getShiftReportData() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

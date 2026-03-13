@@ -165,6 +165,7 @@ export async function getMaterialLotsForAdmin(filters?: {
       },
     },
     orderBy: { receivedAt: 'desc' },
+    take: 500,
   });
 
   return lots;

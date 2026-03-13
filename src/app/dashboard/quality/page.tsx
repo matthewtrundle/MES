@@ -2,8 +2,15 @@ import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
-import { FPYTrendChart } from '@/components/supervisor/FPYTrendChart';
+import dynamic from 'next/dynamic';
+
+const FPYTrendChart = dynamic(
+  () => import('@/components/supervisor/FPYTrendChart').then(mod => mod.FPYTrendChart),
+  { loading: () => <div className="h-[250px] animate-pulse rounded bg-gray-100" /> }
+);
 import { FPYStationCards } from '@/components/supervisor/FPYStationCards';
+
+export const revalidate = 60;
 
 async function getQualityData() {
   const today = new Date();

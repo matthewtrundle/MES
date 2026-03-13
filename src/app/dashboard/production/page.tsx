@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Icons, UnitStatusBadge } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 
+export const revalidate = 30;
+
 async function getProductionData() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -7,9 +7,14 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { SimulationControl } from '@/components/supervisor/SimulationControl';
 import { DashboardTabs } from '@/components/supervisor/DashboardTabs';
 
+export const revalidate = 30;
+
 async function getDashboardData() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const [
     activeWorkOrders,
@@ -22,6 +27,13 @@ async function getDashboardData() {
     qualityResults,
     aiInsights,
     currentWorkOrder,
+    wipCounts,
+    activeUnits,
+    recentCompletions,
+    lastEventsPerStation,
+    materialLots,
+    consumptions,
+    fpyExecutions,
   ] = await Promise.all([
     prisma.workOrder.count({
       where: { status: { in: ['released', 'in_progress'] } },
@@ -71,18 +83,82 @@ async function getDashboardData() {
         timestamp: { gte: today },
       },
     }),
-    // AI insights (unacknowledged, recent) - include description for actionable display
+    // AI insights (unacknowledged, recent)
     prisma.aIInsight.findMany({
       where: { acknowledged: false },
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: { station: { select: { name: true } } },
-      // Need description and insightType for actionable recommendations
     }),
     // Current active work order
     prisma.workOrder.findFirst({
       where: { status: { in: ['released', 'in_progress'] } },
       orderBy: { createdAt: 'desc' },
+    }),
+    // WIP counts per station
+    prisma.unit.groupBy({
+      by: ['currentStationId'],
+      where: {
+        status: { in: ['in_progress', 'rework'] },
+        currentStationId: { not: null },
+      },
+      _count: true,
+    }),
+    // Active units at stations with operator info
+    prisma.unit.findMany({
+      where: {
+        status: { in: ['in_progress', 'rework'] },
+        currentStationId: { not: null },
+      },
+      include: {
+        executions: {
+          where: { completedAt: null },
+          include: {
+            operation: true,
+            operator: true,
+          },
+          take: 1,
+        },
+      },
+    }),
+    // Recent completions for throughput (last hour)
+    prisma.unitOperationExecution.groupBy({
+      by: ['stationId'],
+      where: {
+        completedAt: { gte: oneHourAgo },
+      },
+      _count: true,
+    }),
+    // Last activity per station from events
+    prisma.event.groupBy({
+      by: ['stationId'],
+      where: {
+        stationId: { not: null },
+      },
+      _max: {
+        createdAt: true,
+      },
+    }),
+    // Material lots with remaining qty
+    prisma.materialLot.findMany({
+      where: { qtyRemaining: { gt: 0 } },
+    }),
+    // Material consumptions in last 24h
+    prisma.unitMaterialConsumption.groupBy({
+      by: ['materialLotId'],
+      where: { timestamp: { gte: yesterday } },
+      _sum: { qtyConsumed: true },
+    }),
+    // FPY executions
+    prisma.unitOperationExecution.findMany({
+      where: {
+        completedAt: { not: null },
+        result: { not: null },
+      },
+      select: {
+        isRework: true,
+        result: true,
+      },
     }),
   ]);
 
@@ -101,47 +177,9 @@ async function getDashboardData() {
     ? Math.round((passCount / qualityResults.length) * 100)
     : 100;
 
-  // Get WIP counts per station
-  const wipCounts = await prisma.unit.groupBy({
-    by: ['currentStationId'],
-    where: {
-      status: { in: ['in_progress', 'rework'] },
-      currentStationId: { not: null },
-    },
-    _count: true,
-  });
-
   const wipMap = new Map(
     wipCounts.map((w) => [w.currentStationId, w._count])
   );
-
-  // Get active units at stations with operator info
-  const activeUnits = await prisma.unit.findMany({
-    where: {
-      status: { in: ['in_progress', 'rework'] },
-      currentStationId: { not: null },
-    },
-    include: {
-      executions: {
-        where: { completedAt: null },
-        include: {
-          operation: true,
-          operator: true,
-        },
-        take: 1,
-      },
-    },
-  });
-
-  // Get recent completions for throughput calculation (last hour)
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const recentCompletions = await prisma.unitOperationExecution.groupBy({
-    by: ['stationId'],
-    where: {
-      completedAt: { gte: oneHourAgo },
-    },
-    _count: true,
-  });
 
   const throughputMap = new Map(
     recentCompletions.map((c) => [c.stationId, c._count])
@@ -191,17 +229,6 @@ async function getDashboardData() {
   });
 
   const downtimeStationIds = new Set(activeDowntime.map((d) => d.stationId));
-
-  // Get last activity per station from events
-  const lastEventsPerStation = await prisma.event.groupBy({
-    by: ['stationId'],
-    where: {
-      stationId: { not: null },
-    },
-    _max: {
-      createdAt: true,
-    },
-  });
 
   const lastActivityMap = new Map(
     lastEventsPerStation.map((e) => [e.stationId, e._max.createdAt])
@@ -262,17 +289,6 @@ async function getDashboardData() {
   const expectedUnitsByNow = Math.round(targetUnitsPerShift * shiftProgress);
 
   // Calculate inventory runway
-  const materialLots = await prisma.materialLot.findMany({
-    where: { qtyRemaining: { gt: 0 } },
-  });
-
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const consumptions = await prisma.unitMaterialConsumption.groupBy({
-    by: ['materialLotId'],
-    where: { timestamp: { gte: yesterday } },
-    _sum: { qtyConsumed: true },
-  });
-
   const consumptionMap = new Map(
     consumptions.map((c) => [c.materialLotId, c._sum.qtyConsumed ?? 0])
   );
@@ -316,17 +332,6 @@ async function getDashboardData() {
     lowMaterialCount > 0 ? 'warning' : 'good';
 
   // Calculate FPY for the KPI card
-  const fpyExecutions = await prisma.unitOperationExecution.findMany({
-    where: {
-      completedAt: { not: null },
-      result: { not: null },
-    },
-    select: {
-      isRework: true,
-      result: true,
-    },
-  });
-
   const fpyFirstAttempts = fpyExecutions.filter((e) => !e.isRework);
   const fpyFirstPassCount = fpyFirstAttempts.filter((e) => e.result === 'pass').length;
   const overallFPY = fpyFirstAttempts.length > 0

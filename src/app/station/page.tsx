@@ -31,34 +31,39 @@ export default async function StationSelectionPage() {
     orderBy: [{ site: { name: 'asc' } }, { sequenceOrder: 'asc' }],
   });
 
-  // Get active work counts per station
-  const stationsWithCounts = await Promise.all(
-    stations.map(async (station) => {
-      const activeUnits = await prisma.unit.count({
-        where: {
-          currentStationId: station.id,
-          status: 'in_progress',
+  // Batch counts with groupBy instead of N per-station queries
+  const stationIds = stations.map(s => s.id);
+  const [unitCounts, opCounts] = await Promise.all([
+    prisma.unit.groupBy({
+      by: ['currentStationId'],
+      where: {
+        currentStationId: { in: stationIds },
+        status: 'in_progress',
+      },
+      _count: true,
+    }),
+    prisma.workOrderOperation.groupBy({
+      by: ['stationId'],
+      where: {
+        stationId: { in: stationIds },
+        status: { in: ['pending', 'in_progress'] },
+        workOrder: {
+          status: { in: ['released', 'in_progress'] },
         },
-      });
+      },
+      _count: true,
+    }),
+  ]);
 
-      const pendingOperations = await prisma.workOrderOperation.count({
-        where: {
-          stationId: station.id,
-          status: { in: ['pending', 'in_progress'] },
-          workOrder: {
-            status: { in: ['released', 'in_progress'] },
-          },
-        },
-      });
+  const unitCountMap = new Map(unitCounts.map(c => [c.currentStationId, c._count]));
+  const opCountMap = new Map(opCounts.map(c => [c.stationId, c._count]));
 
-      return {
-        ...station,
-        activeUnits,
-        pendingOperations,
-        hasActiveDowntime: station._count.downtimeIntervals > 0,
-      };
-    })
-  );
+  const stationsWithCounts = stations.map((station) => ({
+    ...station,
+    activeUnits: unitCountMap.get(station.id) ?? 0,
+    pendingOperations: opCountMap.get(station.id) ?? 0,
+    hasActiveDowntime: station._count.downtimeIntervals > 0,
+  }));
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">

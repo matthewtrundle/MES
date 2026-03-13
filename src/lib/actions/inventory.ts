@@ -92,7 +92,7 @@ export async function getInventorySummary() {
 /**
  * Get all material lots with remaining quantity (for individual lot management)
  */
-export async function getAllLots() {
+export async function getAllLots(limit: number = 500) {
   await requireRole(['admin', 'supervisor']);
 
   const lots = await prisma.materialLot.findMany({
@@ -100,6 +100,7 @@ export async function getAllLots() {
       qtyRemaining: { gt: 0 },
     },
     orderBy: [{ materialCode: 'asc' }, { receivedAt: 'asc' }],
+    take: limit,
   });
 
   return lots;
@@ -212,6 +213,7 @@ export async function getMaterialTransactionHistory(materialCode: string) {
       receivedBy: { select: { name: true } },
     },
     orderBy: { receivedAt: 'desc' },
+    take: 200,
   });
 
   // Get consumption history
@@ -226,7 +228,7 @@ export async function getMaterialTransactionHistory(materialCode: string) {
       operator: { select: { name: true } },
     },
     orderBy: { timestamp: 'desc' },
-    take: 100,
+    take: 500,
   });
 
   return { lots, consumptions };

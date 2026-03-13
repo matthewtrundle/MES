@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { createUnit, startOperation } from '@/lib/actions/units';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface CreateUnitDialogProps {
   open: boolean;
@@ -50,6 +51,7 @@ export function CreateUnitDialog({
 
         onOpenChange(false);
         setSerialNumber('');
+        toast.success(`Unit ${unit.serialNumber} created and started`);
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create unit');

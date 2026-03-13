@@ -5,6 +5,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { ParetoChart } from '@/components/supervisor/ParetoChart';
 import { toParetoData } from '@/lib/utils/pareto';
 
+export const revalidate = 60;
+
 interface SearchParams {
   days?: string;
 }

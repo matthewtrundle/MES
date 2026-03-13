@@ -6,6 +6,8 @@ import { ProductionHistoryBrowser } from '@/components/supervisor/ProductionHist
 import { searchProductionHistory, getProductionSummary } from '@/lib/actions/production-history';
 import { prisma } from '@/lib/db/prisma';
 
+export const revalidate = 60;
+
 export default async function ProductionHistoryPage() {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const now = new Date();

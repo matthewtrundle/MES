@@ -5,6 +5,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { OEEGauge } from '@/components/supervisor/OEEGauge';
 import { OEESparkline } from '@/components/supervisor/OEESparkline';
 
+export const revalidate = 60;
+
 async function getOEEData() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

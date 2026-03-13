@@ -320,6 +320,7 @@ model Unit {
 
   @@index([workOrderId])
   @@index([status])
+  @@index([currentStationId])
   @@map("units")
 }
 
@@ -347,6 +348,8 @@ model UnitOperationExecution {
 
   @@index([unitId])
   @@index([stationId, startedAt])
+  @@index([stationId, completedAt])
+  @@index([operatorId, completedAt])
   @@map("unit_operation_executions")
 }
 
@@ -390,6 +393,8 @@ model MaterialLot {
 
   @@index([materialCode])
   @@index([status])
+  @@index([status, qtyRemaining])
+  @@index([purchaseOrderNumber])
   @@map("material_lots")
 }
 
@@ -432,6 +437,8 @@ model QualityCheckResult {
   operator   User                   @relation(fields: [operatorId], references: [id])
 
   @@index([unitId])
+  @@index([timestamp])
+  @@index([definitionId, timestamp])
   @@map("quality_check_results")
 }
 
@@ -469,6 +476,7 @@ model NonconformanceRecord {
   @@index([unitId])
   @@index([materialLotId])
   @@index([status])
+  @@index([stationId, status])
   @@map("nonconformance_records")
 }
 

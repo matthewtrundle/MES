@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Icons, StatusIndicator, UnitStatusBadge } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 
+export const revalidate = 30;
+
 async function getWIPData() {
   // Get all stations with their downtime
   const stations = await prisma.station.findMany({

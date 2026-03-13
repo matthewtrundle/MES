@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { consumeMaterial, getAvailableMaterialLots } from '@/lib/actions/materials';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface BomItem {
   materialCode: string;
@@ -128,6 +129,7 @@ export function MaterialConsumptionDialog({
           stationId,
         });
         onOpenChange(false);
+        toast.success('Material consumption recorded');
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to record consumption');

@@ -38,6 +38,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { InventoryAdjustButton } from '@/components/admin/InventoryAdjustButton';
 import { TransactionLedger } from '@/components/admin/TransactionLedger';
 
+export const revalidate = 60;
+
 export default async function InventoryPage() {
   await requireRole(['admin', 'supervisor']);
 

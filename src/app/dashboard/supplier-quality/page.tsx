@@ -4,6 +4,8 @@ import { SupplierScorecard } from '@/components/supervisor/SupplierScorecard';
 import { DashboardTabs } from '@/components/supervisor/DashboardTabs';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 
+export const revalidate = 60;
+
 export default function SupplierQualityPage() {
   return (
     <div className="min-h-screen bg-gray-100">

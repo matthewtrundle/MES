@@ -5,7 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { searchUnitBySerial, getUnitWithHistory } from '@/lib/actions/units';
 import { searchMaterialLot } from '@/lib/actions/materials';
-import { TraceabilityGraph } from './TraceabilityGraph';
+import dynamic from 'next/dynamic';
+
+const TraceabilityGraph = dynamic(
+  () => import('./TraceabilityGraph').then(mod => mod.TraceabilityGraph),
+  { loading: () => <div className="h-64 animate-pulse rounded bg-gray-100" /> }
+);
 
 type SearchResult = {
   type: 'unit' | 'lot';

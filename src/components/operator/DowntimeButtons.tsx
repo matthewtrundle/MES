@@ -4,6 +4,7 @@ import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { startDowntime, endDowntime } from '@/lib/actions/downtime';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface DowntimeStartButtonProps {
   stationId: string;
@@ -16,6 +17,7 @@ export function DowntimeStartButton({ stationId }: DowntimeStartButtonProps) {
   const handleStart = () => {
     startTransition(async () => {
       await startDowntime(stationId);
+      toast.warning('Downtime started — select a reason');
       router.refresh();
     });
   };
@@ -44,6 +46,7 @@ export function DowntimeEndButton({ downtimeId }: DowntimeEndButtonProps) {
   const handleEnd = () => {
     startTransition(async () => {
       await endDowntime(downtimeId);
+      toast.success('Downtime ended — station back online');
       router.refresh();
     });
   };

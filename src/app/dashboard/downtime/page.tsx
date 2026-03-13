@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { DowntimeParetoChart } from '@/components/supervisor/DowntimeParetoChart';
 import { DowntimeTable } from '@/components/supervisor/DowntimeTable';
 
+export const revalidate = 30;
+
 interface DowntimeStats {
   reasonCode: string;
   reasonDescription: string;

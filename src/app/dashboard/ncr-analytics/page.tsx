@@ -4,6 +4,8 @@ import { NCRAnalyticsDashboard } from '@/components/supervisor/NCRAnalyticsDashb
 import { DashboardTabs } from '@/components/supervisor/DashboardTabs';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 
+export const revalidate = 60;
+
 export default function NCRAnalyticsPage() {
   return (
     <div className="min-h-screen bg-gray-100">

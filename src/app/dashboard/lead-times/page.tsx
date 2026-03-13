@@ -8,6 +8,8 @@ import {
   getLeadTimeTrend,
 } from '@/lib/actions/lead-time-analytics';
 
+export const revalidate = 60;
+
 export default async function LeadTimesPage() {
   const [supplierData, partData, trendData] = await Promise.all([
     getLeadTimeAnalytics(),

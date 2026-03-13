@@ -4,6 +4,8 @@ import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { EventStream, EventTimeline } from '@/components/supervisor/EventStream';
 
+export const revalidate = 30;
+
 interface SearchParams {
   type?: string;
   station?: string;

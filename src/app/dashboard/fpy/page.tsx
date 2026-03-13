@@ -4,6 +4,8 @@ import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { FPYDashboard } from '@/components/supervisor/FPYDashboard';
 import { getOverallFPY, getFPYByStation } from '@/lib/actions/fpy-analytics';
 
+export const revalidate = 60;
+
 async function getFPYSummary() {
   try {
     const [overall, byStation] = await Promise.all([

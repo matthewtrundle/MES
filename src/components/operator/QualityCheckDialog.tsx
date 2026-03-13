@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { recordQualityCheck } from '@/lib/actions/quality';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface QualityCheckDialogProps {
   open: boolean;
@@ -47,6 +48,7 @@ export function QualityCheckDialog({
         onOpenChange(false);
         setSelectedCheck(null);
         setValues({});
+        toast.success(result === 'pass' ? 'Quality check passed' : 'Quality check recorded as failed');
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to record check');
