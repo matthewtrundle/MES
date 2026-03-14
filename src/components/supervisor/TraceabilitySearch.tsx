@@ -37,7 +37,7 @@ type UnitDataForGraph = {
     station: { name: string };
     operator: { name: string };
   }>;
-  qualityChecks: Array<{
+  qualityResults: Array<{
     id: string;
     timestamp: string;
     result: string;
@@ -206,7 +206,7 @@ function UnitResult({ data }: { data: unknown }) {
       station: { name: string };
       operator: { name: string };
     }>;
-    qualityChecks: Array<{
+    qualityResults: Array<{
       id: string;
       timestamp: string;
       result: string;
@@ -356,11 +356,11 @@ function UnitResult({ data }: { data: unknown }) {
           <CardTitle>Quality Checks</CardTitle>
         </CardHeader>
         <CardContent>
-          {unit.qualityChecks.length === 0 ? (
+          {unit.qualityResults.length === 0 ? (
             <p className="text-gray-500">No quality checks recorded</p>
           ) : (
             <div className="space-y-3">
-              {unit.qualityChecks.map((qc) => (
+              {unit.qualityResults.map((qc) => (
                 <div
                   key={qc.id}
                   className="flex items-center justify-between rounded-lg border p-3"

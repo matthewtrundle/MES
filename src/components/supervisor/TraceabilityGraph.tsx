@@ -38,7 +38,7 @@ interface UnitData {
     station: { name: string };
     operator: { name: string };
   }>;
-  qualityChecks: Array<{
+  qualityResults: Array<{
     id: string;
     timestamp: string;
     result: string;
@@ -164,7 +164,7 @@ export function TraceabilityGraph({ data, className = '' }: TraceabilityGraphPro
     const qcStartY = 120;
     const qcSpacing = 70;
 
-    data.qualityChecks.forEach((qc, i) => {
+    data.qualityResults.forEach((qc, i) => {
       const nodeId = `qc-${qc.id}`;
       nodes.push({
         id: nodeId,
