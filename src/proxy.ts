@@ -35,8 +35,6 @@ async function clerkAuthMiddleware(request: NextRequest) {
     '/api/ready(.*)',
     '/api/webhook(.*)',
     '/api/simulation(.*)',
-    '/dashboard(.*)',
-    '/operator(.*)',
     '/',
   ]);
 
