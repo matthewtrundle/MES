@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { emitEvent, generateIdempotencyKey } from '@/lib/db/events';
 import { requireUser } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
-import { startDowntimeSchema, selectDowntimeReasonSchema, endDowntimeSchema } from '@/lib/validation/schemas';
+import { validate, startDowntimeSchema, selectDowntimeReasonSchema, endDowntimeSchema } from '@/lib/validation/schemas';
 
 /**
  * Get downtime reasons for a site
@@ -25,7 +25,7 @@ export async function getDowntimeReasons(siteId: string) {
  * Start a downtime interval at a station
  */
 export async function startDowntime(stationId: string, notes?: string) {
-  startDowntimeSchema.parse({ stationId, notes });
+  validate(startDowntimeSchema, { stationId, notes });
   const user = await requireUser();
 
   const station = await prisma.station.findUnique({
@@ -73,6 +73,7 @@ export async function startDowntime(stationId: string, notes?: string) {
 
   revalidatePath('/station');
   revalidatePath('/dashboard');
+  revalidatePath('/dashboard/downtime');
 
   return downtime;
 }
@@ -81,7 +82,7 @@ export async function startDowntime(stationId: string, notes?: string) {
  * Select a reason for an active downtime
  */
 export async function selectDowntimeReason(downtimeId: string, reasonId: string) {
-  selectDowntimeReasonSchema.parse({ downtimeId, reasonId });
+  validate(selectDowntimeReasonSchema, { downtimeId, reasonId });
   const user = await requireUser();
 
   const downtime = await prisma.downtimeInterval.findUnique({
@@ -130,6 +131,7 @@ export async function selectDowntimeReason(downtimeId: string, reasonId: string)
 
   revalidatePath('/station');
   revalidatePath('/dashboard');
+  revalidatePath('/dashboard/downtime');
 
   return updatedDowntime;
 }
@@ -138,7 +140,7 @@ export async function selectDowntimeReason(downtimeId: string, reasonId: string)
  * End a downtime interval
  */
 export async function endDowntime(downtimeId: string, notes?: string) {
-  endDowntimeSchema.parse({ downtimeId, notes });
+  validate(endDowntimeSchema, { downtimeId, notes });
   const user = await requireUser();
 
   const downtime = await prisma.downtimeInterval.findUnique({
@@ -190,6 +192,7 @@ export async function endDowntime(downtimeId: string, notes?: string) {
 
   revalidatePath('/station');
   revalidatePath('/dashboard');
+  revalidatePath('/dashboard/downtime');
   revalidatePath('/supervisor/downtime');
 
   return updatedDowntime;

@@ -66,7 +66,7 @@ export function QualityCheckDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" data-testid="quality-dialog">
         <DialogHeader>
           <DialogTitle>Quality Check</DialogTitle>
         </DialogHeader>
@@ -77,6 +77,7 @@ export function QualityCheckDialog({
             {qualityChecks.map((check) => (
               <Button
                 key={check.id}
+                data-testid={`quality-check-${check.id}`}
                 variant="outline"
                 className="h-auto w-full justify-start py-3 text-left"
                 onClick={() => setSelectedCheck(check)}
@@ -101,6 +102,7 @@ export function QualityCheckDialog({
                 <input
                   type="number"
                   step="0.01"
+                  data-testid="quality-measurement-input"
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 text-lg focus:border-blue-500 focus:outline-none"
                   placeholder={`Nominal: ${params.nominal}`}
                   value={(values.measured as number) || ''}
@@ -142,7 +144,7 @@ export function QualityCheckDialog({
             )}
 
             {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600" data-testid="quality-error">
                 {error}
               </div>
             )}
@@ -159,6 +161,7 @@ export function QualityCheckDialog({
                 Back
               </Button>
               <Button
+                data-testid="quality-fail-btn"
                 variant="destructive"
                 onClick={() => handleSubmit('fail')}
                 disabled={isPending}
@@ -166,6 +169,7 @@ export function QualityCheckDialog({
                 FAIL
               </Button>
               <Button
+                data-testid="quality-pass-btn"
                 className="bg-green-600 hover:bg-green-700"
                 onClick={() => handleSubmit('pass')}
                 disabled={isPending}

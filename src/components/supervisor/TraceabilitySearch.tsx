@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { searchUnitBySerial, getUnitWithHistory } from '@/lib/actions/units';
 import { searchMaterialLot } from '@/lib/actions/materials';
@@ -9,7 +8,7 @@ import dynamic from 'next/dynamic';
 
 const TraceabilityGraph = dynamic(
   () => import('./TraceabilityGraph').then(mod => mod.TraceabilityGraph),
-  { loading: () => <div className="h-64 animate-pulse rounded bg-gray-100" /> }
+  { loading: () => <div className="h-64 animate-pulse rounded bg-slate-100" /> }
 );
 
 type SearchResult = {
@@ -62,10 +61,17 @@ type UnitDataForGraph = {
   }>;
 };
 
-export function TraceabilitySearch() {
+interface QuickLookupProps {
+  recentUnits: Array<{ id: string; serialNumber: string; status: string; workOrder: { orderNumber: string } }>;
+  activeLots: Array<{ id: string; lotNumber: string; materialCode: string; qtyRemaining: number }>;
+  partsWithUnits: Array<{ id: string; productCode: string; productName: string | null; orderNumber: string }>;
+}
+
+export function TraceabilitySearch({ recentUnits, activeLots, partsWithUnits }: QuickLookupProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'serial' | 'lot'>('serial');
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
+  const [quickTab, setQuickTab] = useState<'units' | 'lots' | 'parts'>('units');
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<SearchResult>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,8 +109,8 @@ export function TraceabilitySearch() {
   return (
     <div className="space-y-6">
       {/* Search Form */}
-      <Card>
-        <CardContent className="pt-6">
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex gap-2">
               <Button
@@ -123,7 +129,7 @@ export function TraceabilitySearch() {
             <div className="flex flex-1 gap-2">
               <input
                 type="text"
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
                 placeholder={
                   searchType === 'serial'
                     ? 'Enter serial number...'
@@ -148,33 +154,121 @@ export function TraceabilitySearch() {
           {/* View Mode Toggle (only for unit results) */}
           {result?.type === 'unit' && (
             <div className="mt-4 flex items-center gap-2">
-              <span className="text-sm text-gray-500">View:</span>
-              <div className="flex rounded-lg border border-gray-200 p-1">
+              <span className="text-sm text-slate-500">View:</span>
+              <div className="flex rounded-lg border border-slate-200 p-1">
                 <button
                   onClick={() => setViewMode('list')}
                   className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
                     viewMode === 'list'
                       ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  📋 List View
+                  List View
                 </button>
                 <button
                   onClick={() => setViewMode('graph')}
                   className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
                     viewMode === 'graph'
                       ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  🔗 Graph View
+                  Graph View
                 </button>
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Quick Lookup */}
+      {!result && (
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-4">
+            <span className="text-sm font-medium text-slate-700">Quick Lookup</span>
+            <div className="flex gap-1">
+              {(['units', 'lots', 'parts'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setQuickTab(tab)}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    quickTab === tab
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {tab === 'units' ? 'Recent Units' : tab === 'lots' ? 'Active Lots' : 'By Work Order'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="p-4">
+            {quickTab === 'units' && (
+              <div className="space-y-1">
+                {recentUnits.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">No units found</p>
+                ) : recentUnits.map((unit) => (
+                  <button
+                    key={unit.id}
+                    onClick={() => { setSearchQuery(unit.serialNumber); setSearchType('serial'); }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 text-left transition-colors"
+                  >
+                    <div>
+                      <span className="font-mono font-medium text-slate-900">{unit.serialNumber}</span>
+                      <span className="ml-2 text-sm text-slate-500">{unit.workOrder.orderNumber}</span>
+                    </div>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      unit.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      unit.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                      unit.status === 'rework' ? 'bg-amber-100 text-amber-700' :
+                      'bg-slate-100 text-slate-700'
+                    }`}>{unit.status.replace('_', ' ')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {quickTab === 'lots' && (
+              <div className="space-y-1">
+                {activeLots.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">No active lots</p>
+                ) : activeLots.map((lot) => (
+                  <button
+                    key={lot.id}
+                    onClick={() => { setSearchQuery(lot.lotNumber); setSearchType('lot'); }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 text-left transition-colors"
+                  >
+                    <div>
+                      <span className="font-mono font-medium text-slate-900">{lot.lotNumber}</span>
+                      <span className="ml-2 text-sm text-slate-500">{lot.materialCode}</span>
+                    </div>
+                    <span className="text-sm text-slate-500">{lot.qtyRemaining} remaining</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {quickTab === 'parts' && (
+              <div className="space-y-1">
+                {partsWithUnits.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">No active work orders</p>
+                ) : partsWithUnits.map((wo) => (
+                  <button
+                    key={wo.id}
+                    onClick={() => { setSearchQuery(wo.orderNumber); setSearchType('serial'); }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 text-left transition-colors"
+                  >
+                    <div>
+                      <span className="font-medium text-slate-900">{wo.productName}</span>
+                      <span className="ml-2 text-sm text-slate-500">{wo.productCode}</span>
+                    </div>
+                    <span className="text-sm font-mono text-slate-500">{wo.orderNumber}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       {result?.type === 'unit' && viewMode === 'graph' && (
@@ -234,9 +328,9 @@ function UnitResult({ data }: { data: unknown }) {
   return (
     <div className="space-y-6">
       {/* Unit Header */}
-      <Card>
-        <CardHeader className="bg-blue-50">
-          <CardTitle className="flex items-center justify-between">
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <h3 className="font-semibold text-slate-900 flex items-center justify-between">
             <span>{unit.serialNumber}</span>
             <span
               className={`rounded px-3 py-1 text-sm ${
@@ -246,41 +340,41 @@ function UnitResult({ data }: { data: unknown }) {
                     ? 'bg-blue-100 text-blue-700'
                     : unit.status === 'rework'
                       ? 'bg-orange-100 text-orange-700'
-                      : 'bg-gray-100 text-gray-700'
+                      : 'bg-slate-100 text-slate-700'
               }`}
             >
               {unit.status.replace('_', ' ')}
             </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
+          </h3>
+        </div>
+        <div className="p-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <p className="text-sm text-gray-500">Work Order</p>
+              <p className="text-sm text-slate-500">Work Order</p>
               <p className="font-medium">{unit.workOrder.orderNumber}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Product</p>
+              <p className="text-sm text-slate-500">Product</p>
               <p className="font-medium">{unit.workOrder.productCode}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Created</p>
+              <p className="text-sm text-slate-500">Created</p>
               <p className="font-medium">
                 {new Date(unit.createdAt).toLocaleString()}
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Operations Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Operations History</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <h3 className="font-semibold text-slate-900">Operations History</h3>
+        </div>
+        <div className="p-4">
           {unit.executions.length === 0 ? (
-            <p className="text-gray-500">No operations recorded</p>
+            <p className="text-slate-500">No operations recorded</p>
           ) : (
             <div className="space-y-3">
               {unit.executions.map((exec) => (
@@ -292,7 +386,7 @@ function UnitResult({ data }: { data: unknown }) {
                     <span className="font-medium">
                       Step {exec.operation.sequence} - {exec.station.name}
                     </span>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500">
                       {exec.operator.name} • Started{' '}
                       {new Date(exec.startedAt).toLocaleString()}
                     </p>
@@ -312,17 +406,17 @@ function UnitResult({ data }: { data: unknown }) {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Material Genealogy */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Material Genealogy</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <h3 className="font-semibold text-slate-900">Material Genealogy</h3>
+        </div>
+        <div className="p-4">
           {unit.materialConsumptions.length === 0 ? (
-            <p className="text-gray-500">No materials recorded</p>
+            <p className="text-slate-500">No materials recorded</p>
           ) : (
             <div className="space-y-3">
               {unit.materialConsumptions.map((mat) => (
@@ -332,13 +426,13 @@ function UnitResult({ data }: { data: unknown }) {
                 >
                   <div>
                     <span className="font-medium">{mat.materialLot.lotNumber}</span>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500">
                       {mat.materialLot.materialCode} • {mat.station.name}
                     </p>
                   </div>
                   <div className="text-right">
                     <span className="font-medium">Qty: {mat.qtyConsumed}</span>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {mat.operator.name} •{' '}
                       {new Date(mat.timestamp).toLocaleString()}
                     </p>
@@ -347,17 +441,17 @@ function UnitResult({ data }: { data: unknown }) {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Quality Checks */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quality Checks</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <h3 className="font-semibold text-slate-900">Quality Checks</h3>
+        </div>
+        <div className="p-4">
           {unit.qualityResults.length === 0 ? (
-            <p className="text-gray-500">No quality checks recorded</p>
+            <p className="text-slate-500">No quality checks recorded</p>
           ) : (
             <div className="space-y-3">
               {unit.qualityResults.map((qc) => (
@@ -367,7 +461,7 @@ function UnitResult({ data }: { data: unknown }) {
                 >
                   <div>
                     <span className="font-medium">{qc.definition.name}</span>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500">
                       {qc.definition.checkType} • {qc.operator.name}
                     </p>
                   </div>
@@ -381,7 +475,7 @@ function UnitResult({ data }: { data: unknown }) {
                     >
                       {qc.result.toUpperCase()}
                     </span>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {new Date(qc.timestamp).toLocaleString()}
                     </p>
                   </div>
@@ -389,18 +483,18 @@ function UnitResult({ data }: { data: unknown }) {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* NCRs */}
       {unit.ncrs.length > 0 && (
-        <Card className="border-red-200">
-          <CardHeader className="bg-red-50">
-            <CardTitle className="text-red-700">
+        <div className="rounded-lg border border-red-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-red-700">
               Non-Conformances ({unit.ncrs.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
+            </h3>
+          </div>
+          <div className="p-4">
             <div className="space-y-3">
               {unit.ncrs.map((ncr) => (
                 <div
@@ -409,7 +503,7 @@ function UnitResult({ data }: { data: unknown }) {
                 >
                   <div>
                     <span className="font-medium">{ncr.defectType}</span>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500">
                       {ncr.station.name} •{' '}
                       {new Date(ncr.createdAt).toLocaleString()}
                     </p>
@@ -418,7 +512,7 @@ function UnitResult({ data }: { data: unknown }) {
                     <span
                       className={`rounded px-2 py-0.5 text-sm ${
                         ncr.status === 'closed'
-                          ? 'bg-gray-100 text-gray-700'
+                          ? 'bg-slate-100 text-slate-700'
                           : ncr.status === 'dispositioned'
                             ? 'bg-yellow-100 text-yellow-700'
                             : 'bg-red-100 text-red-700'
@@ -427,7 +521,7 @@ function UnitResult({ data }: { data: unknown }) {
                       {ncr.status}
                     </span>
                     {ncr.disposition && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-slate-500">
                         Disposition: {ncr.disposition}
                       </p>
                     )}
@@ -435,8 +529,8 @@ function UnitResult({ data }: { data: unknown }) {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -464,55 +558,55 @@ function LotResult({ data }: { data: unknown }) {
   return (
     <div className="space-y-6">
       {/* Lot Header */}
-      <Card>
-        <CardHeader className="bg-green-50">
-          <CardTitle className="flex items-center justify-between">
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <h3 className="font-semibold text-slate-900 flex items-center justify-between">
             <span>{lot.lotNumber}</span>
             <span
               className={`rounded px-3 py-1 text-sm ${
                 lot.qtyRemaining > 0
                   ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-700'
+                  : 'bg-slate-100 text-slate-700'
               }`}
             >
               {lot.qtyRemaining > 0 ? 'Available' : 'Depleted'}
             </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
+          </h3>
+        </div>
+        <div className="p-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <p className="text-sm text-gray-500">Material Code</p>
+              <p className="text-sm text-slate-500">Material Code</p>
               <p className="font-medium">{lot.materialCode}</p>
               {lot.description && (
-                <p className="text-sm text-gray-500">{lot.description}</p>
+                <p className="text-sm text-slate-500">{lot.description}</p>
               )}
             </div>
             <div>
-              <p className="text-sm text-gray-500">Quantity</p>
+              <p className="text-sm text-slate-500">Quantity</p>
               <p className="font-medium">
                 {lot.qtyRemaining} / {lot.qtyReceived}
               </p>
-              <p className="text-sm text-gray-500">remaining / received</p>
+              <p className="text-sm text-slate-500">remaining / received</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Received</p>
+              <p className="text-sm text-slate-500">Received</p>
               <p className="font-medium">
                 {new Date(lot.receivedAt).toLocaleDateString()}
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Consumption History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Units Using This Lot ({lot.consumptions.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <h3 className="font-semibold text-slate-900">Units Using This Lot ({lot.consumptions.length})</h3>
+        </div>
+        <div className="p-4">
           {lot.consumptions.length === 0 ? (
-            <p className="text-gray-500">No consumptions recorded</p>
+            <p className="text-slate-500">No consumptions recorded</p>
           ) : (
             <div className="space-y-3">
               {lot.consumptions.map((cons) => (
@@ -522,13 +616,13 @@ function LotResult({ data }: { data: unknown }) {
                 >
                   <div>
                     <span className="font-medium">{cons.unit.serialNumber}</span>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500">
                       {cons.station.name} • {cons.operator.name}
                     </p>
                   </div>
                   <div className="text-right">
                     <span className="font-medium">Qty: {cons.qtyConsumed}</span>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {new Date(cons.timestamp).toLocaleString()}
                     </p>
                   </div>
@@ -536,8 +630,8 @@ function LotResult({ data }: { data: unknown }) {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

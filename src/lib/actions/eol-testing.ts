@@ -6,6 +6,7 @@ import { requireRole, requireUser } from '@/lib/auth/rbac';
 import { logAuditTrail } from '@/lib/db/audit';
 import { revalidatePath } from 'next/cache';
 import {
+  validate,
   recordEolTestResultSchema,
   createEolTestSuiteSchema,
   updateEolTestSuiteSchema,
@@ -55,7 +56,7 @@ export async function createEolTestSuite(data: {
     sequence?: number;
   }[];
 }) {
-  createEolTestSuiteSchema.parse(data);
+  validate(createEolTestSuiteSchema, data);
   const user = await requireRole(['admin']);
 
   const routing = await prisma.routing.findUnique({
@@ -111,6 +112,7 @@ export async function createEolTestSuite(data: {
   });
 
   revalidatePath('/admin/eol-tests');
+  revalidatePath('/dashboard');
   return suite;
 }
 
@@ -132,7 +134,7 @@ export async function updateEolTestSuite(data: {
     sequence?: number;
   }[];
 }) {
-  updateEolTestSuiteSchema.parse(data);
+  validate(updateEolTestSuiteSchema, data);
   const user = await requireRole(['admin']);
 
   const existing = await prisma.eolTestSuite.findUnique({
@@ -219,6 +221,7 @@ export async function updateEolTestSuite(data: {
   });
 
   revalidatePath('/admin/eol-tests');
+  revalidatePath('/dashboard');
   return suite;
 }
 
@@ -271,6 +274,7 @@ export async function deleteEolTestSuite(id: string) {
   });
 
   revalidatePath('/admin/eol-tests');
+  revalidatePath('/dashboard');
 }
 
 // =============================================================================
@@ -305,7 +309,7 @@ export async function recordEolTestResult(data: {
   results: { parameterId: string; value: number }[];
   notes?: string;
 }) {
-  recordEolTestResultSchema.parse(data);
+  validate(recordEolTestResultSchema, data);
   const user = await requireUser();
 
   const unit = await prisma.unit.findUnique({
@@ -572,7 +576,7 @@ async function generateSerialFromFormat(format: string, routingId: string): Prom
  * Verifies all EOL tests have passed before assignment
  */
 export async function assignSerialNumber(unitId: string) {
-  assignSerialNumberSchema.parse({ unitId });
+  validate(assignSerialNumberSchema, { unitId });
   const user = await requireUser();
 
   const unit = await prisma.unit.findUnique({
@@ -718,5 +722,6 @@ export async function updateRoutingSerialFormat(routingId: string, serialFormat:
   });
 
   revalidatePath('/admin/eol-tests');
+  revalidatePath('/dashboard');
   return updated;
 }

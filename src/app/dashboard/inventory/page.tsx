@@ -8,12 +8,6 @@ import {
 import { getRecentTransactions } from '@/lib/actions/inventory-ledger';
 import { getBuildableUnits } from '@/lib/actions/buildable-units';
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from '@/components/ui/card';
-import {
   Table,
   TableHeader,
   TableRow,
@@ -23,22 +17,15 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
-  Package,
   Layers,
   AlertTriangle,
   Clock,
-  TrendingDown,
-  BoxesIcon,
   FileText,
-  Hammer,
 } from 'lucide-react';
-import Link from 'next/link';
-import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 import { InventoryAdjustButton } from '@/components/admin/InventoryAdjustButton';
 import { TransactionLedger } from '@/components/admin/TransactionLedger';
-
-export const dynamic = 'force-dynamic';
 
 export const revalidate = 60;
 
@@ -62,119 +49,51 @@ export default async function InventoryPage() {
   const totalAvailable = summary.reduce((sum, m) => sum + m.available, 0);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Dashboard</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-purple-100 p-2">
-                  <Package className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">
-                    Inventory Dashboard
-                  </h1>
-                  <p className="text-sm text-gray-500">
-                    Material levels, low stock alerts, and expiring lots
-                  </p>
-                </div>
-              </div>
-            </div>
-            <AutoRefresh intervalSeconds={30} />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader title="Inventory Dashboard" subtitle="Material levels, low stock alerts, and expiring lots">
+        <AutoRefresh intervalSeconds={30} />
+      </DashboardPageHeader>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {/* Summary Cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
-                Total Materials
-              </CardTitle>
-              <Package className="h-5 w-5 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-gray-900">
-                {totalMaterials}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Unique material codes</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
-                Total On-Hand
-              </CardTitle>
-              <Layers className="h-5 w-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-gray-900">
-                {totalOnHand.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Quantity across all lots</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
-                Total Committed
-              </CardTitle>
-              <BoxesIcon className="h-5 w-5 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-gray-900">
-                {totalCommitted.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Reserved in kits</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
-                Total Available
-              </CardTitle>
-              <TrendingDown className="h-5 w-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-green-600 font-bold">
-                {totalAvailable.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">On-hand minus committed</p>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm font-medium text-slate-500">Total Materials</p>
+            <p className="text-xl font-semibold text-slate-900 mt-1">{totalMaterials}</p>
+            <p className="text-xs text-slate-500 mt-1">Unique material codes</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm font-medium text-slate-500">Total On-Hand</p>
+            <p className="text-xl font-semibold text-slate-900 mt-1">{totalOnHand.toLocaleString()}</p>
+            <p className="text-xs text-slate-500 mt-1">Quantity across all lots</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm font-medium text-slate-500">Total Committed</p>
+            <p className="text-xl font-semibold text-slate-900 mt-1">{totalCommitted.toLocaleString()}</p>
+            <p className="text-xs text-slate-500 mt-1">Reserved in kits</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm font-medium text-slate-500">Total Available</p>
+            <p className="text-xl font-semibold text-green-600 mt-1">{totalAvailable.toLocaleString()}</p>
+            <p className="text-xs text-slate-500 mt-1">On-hand minus committed</p>
+          </div>
         </div>
 
         {/* Buildable Units */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Hammer className="h-5 w-5 text-indigo-500" />
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
               Buildable Units
               {buildableUnits.length > 0 && (
                 <Badge variant="outline" className="ml-2">
                   {buildableUnits.length} product{buildableUnits.length !== 1 ? 's' : ''}
                 </Badge>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-4">
             {buildableUnits.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">
+              <p className="text-center text-slate-500 py-8">
                 No routings with BOM defined
               </p>
             ) : (
@@ -186,16 +105,16 @@ export default async function InventoryPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className="font-semibold text-slate-900">
                           {bu.routingName}
                         </h3>
-                        <p className="text-xs text-gray-500 font-mono">
+                        <p className="text-xs text-slate-500 font-mono">
                           {bu.productCode}
                         </p>
                       </div>
                       <div className="text-right">
                         <p
-                          className={`text-3xl font-bold ${
+                          className={`text-xl font-semibold ${
                             bu.buildableUnits === 0
                               ? 'text-red-600'
                               : bu.buildableUnits <= 5
@@ -205,7 +124,7 @@ export default async function InventoryPage() {
                         >
                           {bu.buildableUnits}
                         </p>
-                        <p className="text-xs text-gray-500">units</p>
+                        <p className="text-xs text-slate-500">units</p>
                       </div>
                     </div>
 
@@ -226,7 +145,7 @@ export default async function InventoryPage() {
 
                     {bu.materials.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                           BOM Components
                         </p>
                         {bu.materials.map((mat) => (
@@ -241,7 +160,7 @@ export default async function InventoryPage() {
                             <span className="font-mono text-xs">
                               {mat.materialCode}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-slate-500">
                               {mat.availableQty} avail / {mat.qtyPerUnit} req
                             </span>
                           </div>
@@ -252,20 +171,19 @@ export default async function InventoryPage() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Inventory Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-900">
               Inventory by Material
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-4">
             {summary.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">
+              <p className="text-center text-slate-500 py-8">
                 No materials in inventory
               </p>
             ) : (
@@ -288,7 +206,7 @@ export default async function InventoryPage() {
                         <TableCell className="font-mono font-medium">
                           {item.materialCode}
                         </TableCell>
-                        <TableCell className="text-gray-500">
+                        <TableCell className="text-slate-500">
                           {item.description ?? '-'}
                         </TableCell>
                         <TableCell className="text-right">
@@ -309,7 +227,7 @@ export default async function InventoryPage() {
                               {item.expiringCount}
                             </Badge>
                           ) : (
-                            <span className="text-gray-400">0</span>
+                            <span className="text-slate-400">0</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -318,13 +236,13 @@ export default async function InventoryPage() {
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Low Stock Alerts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               Low Stock Alerts
               {lowStock.length > 0 && (
@@ -332,11 +250,11 @@ export default async function InventoryPage() {
                   {lowStock.length}
                 </Badge>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-4">
             {lowStock.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">
+              <p className="text-center text-slate-500 py-8">
                 No materials projected to run out within 7 days
               </p>
             ) : (
@@ -383,13 +301,13 @@ export default async function InventoryPage() {
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Expiring Lots */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
               <Clock className="h-5 w-5 text-orange-500" />
               Expiring Lots (Next 14 Days)
               {expiringLots.length > 0 && (
@@ -397,11 +315,11 @@ export default async function InventoryPage() {
                   {expiringLots.length}
                 </Badge>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-4">
             {expiringLots.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">
+              <p className="text-center text-slate-500 py-8">
                 No lots expiring within 14 days
               </p>
             ) : (
@@ -472,23 +390,23 @@ export default async function InventoryPage() {
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* All Lots (with Adjust) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
               <Layers className="h-5 w-5 text-blue-500" />
               All Lots
               <Badge variant="outline" className="ml-2">
                 {allLots.length}
               </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-4">
             {allLots.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">
+              <p className="text-center text-slate-500 py-8">
                 No lots in inventory
               </p>
             ) : (
@@ -526,10 +444,10 @@ export default async function InventoryPage() {
                         <TableCell className="text-right font-mono">
                           {lot.qtyRemaining.toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-gray-500">
+                        <TableCell className="text-slate-500">
                           {new Date(lot.receivedAt).toLocaleDateString()}
                         </TableCell>
-                        <TableCell className="text-gray-500">
+                        <TableCell className="text-slate-500">
                           {lot.expiresAt
                             ? new Date(lot.expiresAt).toLocaleDateString()
                             : '-'}
@@ -548,27 +466,27 @@ export default async function InventoryPage() {
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Transaction Ledger */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
               <FileText className="h-5 w-5 text-slate-500" />
               Inventory Transaction Ledger
               <Badge variant="outline" className="ml-2">
                 Immutable
               </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-4">
             <TransactionLedger
               initialTransactions={recentTransactions as never[]}
               initialTotal={recentTransactions.length}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </main>
     </div>
   );

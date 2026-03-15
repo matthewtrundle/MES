@@ -1,7 +1,29 @@
 import { z } from 'zod';
 
+/**
+ * Validate data against a Zod schema and throw a user-friendly error on failure.
+ * Use this instead of `schema.parse()` in server actions to avoid leaking raw Zod JSON.
+ */
+export function validate<T>(schema: z.ZodType<T>, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (result.success) return result.data;
+
+  // Zod 4 uses .issues, not .errors
+  const messages = result.error.issues.map((e) => {
+    const field = e.path.length > 0 ? e.path.join('.') : undefined;
+    return field ? `${field}: ${e.message}` : e.message;
+  });
+  throw new Error(messages.join('; '));
+}
+
 // ── Shared primitives ─────────────────────────────────────────────
-export const uuid = z.string().uuid();
+// Use regex instead of z.string().uuid() because Zod 4's .uuid() enforces
+// RFC 9562 version+variant bits, which rejects internally-generated IDs like
+// seed data UUIDs (e.g., "55555555-1111-1111-1111-111111111111").
+export const uuid = z.string().regex(
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+  'Invalid UUID'
+);
 
 export const serialNumber = z
   .string()

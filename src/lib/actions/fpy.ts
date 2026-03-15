@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db/prisma';
 import { requireRole } from '@/lib/auth/rbac';
+import { validate } from '@/lib/validation/schemas';
 import { z } from 'zod';
 
 // ── Validation Schemas ──────────────────────────────────────────────
@@ -98,7 +99,7 @@ export async function calculateStationFPY(
   stationId: string,
   dateRange?: { from?: Date; to?: Date }
 ): Promise<StationFPYResult> {
-  stationFPYSchema.parse({ stationId, dateRange });
+  validate(stationFPYSchema, { stationId, dateRange });
   await requireRole(['admin', 'supervisor']);
 
   const station = await prisma.station.findUnique({
@@ -139,7 +140,7 @@ export async function calculateOverallFPY(
   siteId: string,
   dateRange?: { from?: Date; to?: Date }
 ): Promise<FPYResult> {
-  overallFPYSchema.parse({ siteId, dateRange });
+  validate(overallFPYSchema, { siteId, dateRange });
   await requireRole(['admin', 'supervisor']);
 
   const executions = await prisma.unitOperationExecution.findMany({
@@ -164,7 +165,7 @@ export async function getAllStationsFPY(
   siteId: string,
   dateRange?: { from?: Date; to?: Date }
 ): Promise<StationFPYResult[]> {
-  overallFPYSchema.parse({ siteId, dateRange });
+  validate(overallFPYSchema, { siteId, dateRange });
   await requireRole(['admin', 'supervisor']);
 
   const stations = await prisma.station.findMany({
@@ -214,7 +215,7 @@ export async function getFPYTrend(
   period: 'daily' | 'weekly' = 'daily',
   intervals: number = 7
 ): Promise<FPYTrendPoint[]> {
-  fpyTrendSchema.parse({ stationId, period, intervals });
+  validate(fpyTrendSchema, { stationId, period, intervals });
   await requireRole(['admin', 'supervisor']);
 
   const now = new Date();
@@ -270,7 +271,7 @@ export async function getFPYByProduct(
   siteId: string,
   dateRange?: { from?: Date; to?: Date }
 ): Promise<ProductFPYResult[]> {
-  fpyByProductSchema.parse({ siteId, dateRange });
+  validate(fpyByProductSchema, { siteId, dateRange });
   await requireRole(['admin', 'supervisor']);
 
   const executions = await prisma.unitOperationExecution.findMany({

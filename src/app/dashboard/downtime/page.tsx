@@ -1,10 +1,7 @@
 import { prisma } from '@/lib/db/prisma';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import Link from 'next/link';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 import { DowntimeParetoChart } from '@/components/supervisor/DowntimeParetoChart';
 import { DowntimeTable } from '@/components/supervisor/DowntimeTable';
-
-export const dynamic = 'force-dynamic';
 
 export const revalidate = 30;
 
@@ -99,181 +96,136 @@ export default async function DowntimePage() {
   const unplannedMinutes = totalMinutes - plannedMinutes;
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Downtime Analysis</h1>
-          <p className="text-gray-600">Last 7 days</p>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader title="Downtime Analysis" subtitle="Last 7 days" />
+
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Summary Cards */}
+        <div className="grid gap-4 md:grid-cols-3 mb-6">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Total Downtime</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-1">{totalMinutes} min</p>
+            <p className="text-sm text-slate-500">{Math.round(totalMinutes / 60)} hours</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Planned</p>
+            <p className="text-2xl font-semibold text-blue-600 mt-1">{plannedMinutes} min</p>
+            <p className="text-sm text-slate-500">{totalMinutes > 0 ? Math.round((plannedMinutes / totalMinutes) * 100) : 0}% of total</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Unplanned</p>
+            <p className="text-2xl font-semibold text-red-600 mt-1">{unplannedMinutes} min</p>
+            <p className="text-sm text-slate-500">{totalMinutes > 0 ? Math.round((unplannedMinutes / totalMinutes) * 100) : 0}% of total</p>
+          </div>
         </div>
-        <Link
-          href="/dashboard"
-          className="rounded-lg border px-4 py-2 hover:bg-gray-50"
-        >
-          Back to Dashboard
-        </Link>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Total Downtime
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totalMinutes} min</p>
-            <p className="text-sm text-gray-500">
-              {Math.round(totalMinutes / 60)} hours
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Planned
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-blue-600">
-              {plannedMinutes} min
-            </p>
-            <p className="text-sm text-gray-500">
-              {totalMinutes > 0
-                ? Math.round((plannedMinutes / totalMinutes) * 100)
-                : 0}
-              % of total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Unplanned
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-red-600">
-              {unplannedMinutes} min
-            </p>
-            <p className="text-sm text-gray-500">
-              {totalMinutes > 0
-                ? Math.round((unplannedMinutes / totalMinutes) * 100)
-                : 0}
-              % of total
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Active Downtime Alert */}
-      {activeDowntime.length > 0 && (
-        <Card className="mb-6 border-2 border-yellow-400 bg-yellow-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-yellow-800">
-              Active Downtime ({activeDowntime.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {activeDowntime.map((dt) => {
-                const elapsedMinutes = Math.round(
-                  (Date.now() - new Date(dt.startedAt).getTime()) / 60000
-                );
-                return (
-                  <div
-                    key={dt.id}
-                    className="flex items-center justify-between rounded bg-white p-3"
-                  >
-                    <div>
-                      <span className="font-medium">{dt.station.name}</span>
-                      <span className="ml-2 text-gray-600">
-                        {dt.reason?.code ?? 'No reason'} -{' '}
-                        {dt.reason?.description ?? 'Awaiting selection'}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-lg font-bold text-yellow-700">
-                        {elapsedMinutes} min
-                      </span>
-                      <p className="text-xs text-gray-500">
-                        Started by {dt.operator.name}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+        {/* Active Downtime Alert */}
+        {activeDowntime.length > 0 && (
+          <div className="mb-6 rounded-lg border-2 border-yellow-400 bg-yellow-50 overflow-hidden">
+            <div className="px-4 py-3 border-b border-yellow-400">
+              <h3 className="font-semibold text-yellow-800">
+                Active Downtime ({activeDowntime.length})
+              </h3>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Pareto Chart */}
-      <div className="mb-6 grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pareto Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DowntimeParetoChart data={paretoData} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Downtime by Reason</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {paretoData.length === 0 ? (
-              <p className="py-8 text-center text-gray-500">
-                No downtime recorded in the last 7 days
-              </p>
-            ) : (
+            <div className="p-4">
               <div className="space-y-2">
-                {paretoData.map((item, idx) => {
-                  const percentage =
-                    totalMinutes > 0
-                      ? Math.round((item.totalMinutes / totalMinutes) * 100)
-                      : 0;
+                {activeDowntime.map((dt) => {
+                  const elapsedMinutes = Math.round(
+                    (Date.now() - new Date(dt.startedAt).getTime()) / 60000
+                  );
                   return (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">
-                          {item.reasonCode}
-                          <span className="ml-1 text-gray-500">
-                            ({item.count}x)
-                          </span>
-                        </span>
-                        <span>
-                          {item.totalMinutes} min ({percentage}%)
+                    <div
+                      key={dt.id}
+                      className="flex items-center justify-between rounded bg-white p-3"
+                    >
+                      <div>
+                        <span className="font-medium">{dt.station.name}</span>
+                        <span className="ml-2 text-slate-600">
+                          {dt.reason?.code ?? 'No reason'} -{' '}
+                          {dt.reason?.description ?? 'Awaiting selection'}
                         </span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded bg-gray-200">
-                        <div
-                          className={`h-full ${item.isPlanned ? 'bg-blue-500' : 'bg-red-500'}`}
-                          style={{ width: `${percentage}%` }}
-                        />
+                      <div className="text-right">
+                        <span className="text-lg font-bold text-yellow-700">
+                          {elapsedMinutes} min
+                        </span>
+                        <p className="text-xs text-slate-500">
+                          Started by {dt.operator.name}
+                        </p>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          </div>
+        )}
 
-      {/* Recent Downtime Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Downtime Events</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DowntimeTable intervals={recentIntervals} />
-        </CardContent>
-      </Card>
+        {/* Pareto Chart + Breakdown */}
+        <div className="mb-6 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200">
+              <h3 className="font-semibold text-slate-900">Pareto Analysis</h3>
+            </div>
+            <div className="p-4">
+              <DowntimeParetoChart data={paretoData} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200">
+              <h3 className="font-semibold text-slate-900">Downtime by Reason</h3>
+            </div>
+            <div className="p-4">
+              {paretoData.length === 0 ? (
+                <p className="py-8 text-center text-slate-500">
+                  No downtime recorded in the last 7 days
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {paretoData.map((item, idx) => {
+                    const percentage =
+                      totalMinutes > 0
+                        ? Math.round((item.totalMinutes / totalMinutes) * 100)
+                        : 0;
+                    return (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">
+                            {item.reasonCode}
+                            <span className="ml-1 text-slate-500">
+                              ({item.count}x)
+                            </span>
+                          </span>
+                          <span>
+                            {item.totalMinutes} min ({percentage}%)
+                          </span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded bg-slate-200">
+                          <div
+                            className={`h-full ${item.isPlanned ? 'bg-blue-500' : 'bg-red-500'}`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Downtime Table */}
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-900">Recent Downtime Events</h3>
+          </div>
+          <div className="p-4">
+            <DowntimeTable intervals={recentIntervals} />
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

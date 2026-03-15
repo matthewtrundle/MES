@@ -3,9 +3,6 @@ import { getSuppliers } from '@/lib/actions/admin/suppliers';
 import { PurchaseOrderTable } from '@/components/admin/PurchaseOrderTable';
 import { PurchaseOrderForm } from '@/components/admin/PurchaseOrderForm';
 import { POImportDialog } from '@/components/admin/POImportDialog';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
-export const dynamic = 'force-dynamic';
 
 export default async function PurchaseOrdersPage() {
   const [purchaseOrders, suppliers] = await Promise.all([
@@ -14,12 +11,12 @@ export default async function PurchaseOrdersPage() {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Purchase Orders</h1>
-          <p className="text-slate-500 mt-1">
-            Create and manage purchase orders for materials procurement
+          <h1 className="text-xl font-semibold text-slate-900">Purchase Orders</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {purchaseOrders.length} purchase order{purchaseOrders.length !== 1 ? 's' : ''} in system
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -28,17 +25,9 @@ export default async function PurchaseOrdersPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Purchase Orders</CardTitle>
-          <CardDescription>
-            {purchaseOrders.length} purchase order{purchaseOrders.length !== 1 ? 's' : ''} in system
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PurchaseOrderTable purchaseOrders={purchaseOrders} suppliers={suppliers} />
-        </CardContent>
-      </Card>
+      <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+        <PurchaseOrderTable purchaseOrders={purchaseOrders} suppliers={suppliers} />
+      </div>
     </div>
   );
 }

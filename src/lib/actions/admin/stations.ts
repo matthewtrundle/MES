@@ -65,6 +65,7 @@ export async function createStation(data: {
 
   revalidatePath('/admin/stations');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return station;
 }
@@ -109,6 +110,7 @@ export async function updateStation(
 
   revalidatePath('/admin/stations');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return station;
 }
@@ -163,6 +165,7 @@ export async function deleteStation(id: string) {
 
   revalidatePath('/admin/stations');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 }
 
 export async function reorderStations(siteId: string, stationOrder: string[]) {
@@ -190,6 +193,7 @@ export async function reorderStations(siteId: string, stationOrder: string[]) {
 
   revalidatePath('/admin/stations');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 }
 
 export async function getNextSequenceOrder(siteId: string): Promise<number> {

@@ -97,6 +97,7 @@ export async function createProcessStepDefinition(data: {
 
   revalidatePath('/admin/process-steps');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return definition;
 }
@@ -177,6 +178,7 @@ export async function updateProcessStepDefinition(
 
   revalidatePath('/admin/process-steps');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return definition;
 }

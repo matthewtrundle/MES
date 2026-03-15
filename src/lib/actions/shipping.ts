@@ -10,6 +10,7 @@ import {
   type CreateShipmentInput,
   type ShipmentFilterInput,
 } from '@/lib/validation/shipping-schemas';
+import { validate } from '@/lib/validation/schemas';
 
 // ── Get next shipment number ────────────────────────────────────
 async function getNextShipmentNumber(
@@ -162,7 +163,7 @@ export async function getWorkOrderShippingDetails(workOrderId: string) {
  */
 export async function createShipment(data: CreateShipmentInput) {
   const user = await requireRole(['admin', 'supervisor']);
-  const validated = createShipmentSchema.parse(data);
+  const validated = validate(createShipmentSchema, data);
 
   const site = await prisma.site.findFirst();
   if (!site) {
@@ -290,6 +291,7 @@ export async function createShipment(data: CreateShipmentInput) {
   });
 
   revalidatePath('/admin/shipping');
+  revalidatePath('/dashboard');
   return result;
 }
 
@@ -439,6 +441,7 @@ export async function shipShipment(shipmentId: string) {
   });
 
   revalidatePath('/admin/shipping');
+  revalidatePath('/dashboard');
   return result;
 }
 

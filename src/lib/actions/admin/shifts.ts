@@ -67,6 +67,7 @@ export async function createShift(data: {
   });
 
   revalidatePath('/admin/shifts');
+  revalidatePath('/dashboard');
   return shift;
 }
 
@@ -117,6 +118,7 @@ export async function updateShift(
   });
 
   revalidatePath('/admin/shifts');
+  revalidatePath('/dashboard');
   return shift;
 }
 
@@ -156,6 +158,7 @@ export async function deleteShift(id: string) {
   });
 
   revalidatePath('/admin/shifts');
+  revalidatePath('/dashboard');
 }
 
 /**

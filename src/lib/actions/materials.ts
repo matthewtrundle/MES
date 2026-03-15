@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { emitEvent, generateIdempotencyKey } from '@/lib/db/events';
 import { requireUser } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
-import { consumeMaterialSchema } from '@/lib/validation/schemas';
+import { validate, consumeMaterialSchema } from '@/lib/validation/schemas';
 
 /**
  * Get material lots available for consumption
@@ -85,7 +85,7 @@ export async function consumeMaterial(data: {
   qtyConsumed: number;
   stationId: string;
 }) {
-  consumeMaterialSchema.parse(data);
+  validate(consumeMaterialSchema, data);
   const user = await requireUser();
 
   const unit = await prisma.unit.findUnique({
@@ -176,18 +176,19 @@ export async function consumeMaterial(data: {
   const newQty = previousQty - data.qtyConsumed;
 
   // Create consumption record, update lot quantity, and write ledger transaction atomically
+  // Use resolvedLotId (which may differ from data.materialLotId when kit substitution fires)
   const [consumption] = await prisma.$transaction([
     prisma.unitMaterialConsumption.create({
       data: {
         unitId: data.unitId,
-        materialLotId: data.materialLotId,
+        materialLotId: resolvedLotId,
         qtyConsumed: data.qtyConsumed,
         stationId: data.stationId,
         operatorId: user.id,
       },
     }),
     prisma.materialLot.update({
-      where: { id: data.materialLotId },
+      where: { id: resolvedLotId },
       data: {
         qtyRemaining: newQty,
       },
@@ -195,7 +196,7 @@ export async function consumeMaterial(data: {
     // Record inventory transaction in the ledger
     prisma.inventoryTransaction.create({
       data: {
-        materialLotId: data.materialLotId,
+        materialLotId: resolvedLotId,
         transactionType: 'issue',
         quantity: -data.qtyConsumed,
         previousQty,
@@ -228,6 +229,7 @@ export async function consumeMaterial(data: {
   });
 
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return consumption;
 }

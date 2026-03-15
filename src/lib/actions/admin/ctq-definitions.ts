@@ -117,6 +117,7 @@ export async function createCTQDefinition(data: {
   });
 
   revalidatePath('/admin/ctq');
+  revalidatePath('/dashboard');
   return definition;
 }
 
@@ -200,6 +201,7 @@ export async function updateCTQDefinition(
   });
 
   revalidatePath('/admin/ctq');
+  revalidatePath('/dashboard');
   return definition;
 }
 
@@ -275,6 +277,7 @@ export async function copyCTQsToNewRevision(
   });
 
   revalidatePath('/admin/ctq');
+  revalidatePath('/dashboard');
   return created;
 }
 

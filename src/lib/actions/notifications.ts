@@ -9,11 +9,12 @@ import {
   type CreateNotificationInput,
   type GetNotificationsOptions,
 } from '@/lib/validation/notification-schemas';
+import { validate } from '@/lib/validation/schemas';
 
 // ── Create Notification ─────────────────────────────────────────
 export async function createNotification(data: CreateNotificationInput) {
   await requireUser();
-  const validated = createNotificationSchema.parse(data);
+  const validated = validate(createNotificationSchema, data);
 
   const notification = await prisma.notification.create({
     data: {
@@ -33,7 +34,7 @@ export async function createNotification(data: CreateNotificationInput) {
 // ── Get Notifications for Current User ──────────────────────────
 export async function getNotifications(options?: Partial<GetNotificationsOptions>) {
   const user = await requireUser();
-  const validated = getNotificationsSchema.parse(options ?? {});
+  const validated = validate(getNotificationsSchema, options ?? {});
 
   const where: Record<string, unknown> = {
     userId: user.id,

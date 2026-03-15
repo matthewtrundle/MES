@@ -1,10 +1,7 @@
-import Link from 'next/link';
-import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 import { FPYDashboard } from '@/components/supervisor/FPYDashboard';
 import { getOverallFPY, getFPYByStation } from '@/lib/actions/fpy-analytics';
-
-export const dynamic = 'force-dynamic';
 
 export const revalidate = 60;
 
@@ -49,45 +46,21 @@ export default async function FPYPage() {
         : 'text-red-600';
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Dashboard</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-emerald-100 p-2">
-                  <Icons.pass className="h-6 w-6 text-emerald-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">First-Pass Yield Analysis</h1>
-                  <p className="text-sm text-gray-500">FPY metrics by station, step, and trend</p>
-                </div>
-              </div>
-            </div>
-            <AutoRefresh intervalSeconds={30} />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader title="First-Pass Yield Analysis" subtitle="FPY metrics by station, step, and trend">
+        <AutoRefresh intervalSeconds={30} />
+      </DashboardPageHeader>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Hero FPY Card */}
-        <div className="mb-6 rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
+        <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Overall First-Pass Yield</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-lg font-semibold text-slate-900">Overall First-Pass Yield</h2>
+              <p className="text-sm text-slate-500 mt-1">
                 Units passing first attempt without rework (last 30 days)
               </p>
-              <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
+              <div className="mt-2 flex items-center gap-4 text-sm text-slate-600">
                 <span>{summary.stationCount} stations monitored</span>
                 {summary.belowTarget > 0 && (
                   <span className="text-amber-600 font-medium">
@@ -105,7 +78,7 @@ export default async function FPYPage() {
               <p className={`text-5xl font-bold ${fpyColor}`}>
                 {summary.overallFPY}%
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 {summary.passedFirstPass} of {summary.totalFirstPass} first attempts
               </p>
             </div>

@@ -85,6 +85,7 @@ export async function recordCTQMeasurement(data: {
   });
 
   revalidatePath('/admin/ctq');
+  revalidatePath('/dashboard');
   return { ...measurement, result };
 }
 

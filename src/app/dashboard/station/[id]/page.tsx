@@ -1,10 +1,8 @@
 import { prisma } from '@/lib/db/prisma';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Icons, UnitStatusBadge, StatusIndicator } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
-
-export const dynamic = 'force-dynamic';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 
 export const revalidate = 30;
 
@@ -130,59 +128,24 @@ export default async function StationDetailPage({ params }: StationPageProps) {
   const { station, activeDowntime, unitsAtStation, recentOperations, todayDowntime, totalDowntimeMinutes, completedToday, passRate, avgCycleTime, estimatedTime, recentEvents } = data;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Back</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div
-                  className={`rounded-lg p-2 ${
-                    activeDowntime
-                      ? 'bg-amber-100'
-                      : unitsAtStation.length > 0
-                        ? 'bg-green-100'
-                        : 'bg-gray-100'
-                  }`}
-                >
-                  <Icons.station className="h-6 w-6 text-gray-700" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-bold text-gray-900">
-                      {station.name}
-                    </h1>
-                    <StatusIndicator
-                      status={
-                        activeDowntime
-                          ? 'downtime'
-                          : unitsAtStation.length > 0
-                            ? 'running'
-                            : 'idle'
-                      }
-                      size="md"
-                      pulse={unitsAtStation.length > 0 && !activeDowntime}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    Station {station.sequenceOrder} - {station.stationType}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <AutoRefresh intervalSeconds={10} />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader
+        title={station.name}
+        subtitle={`Station ${station.sequenceOrder} - ${station.stationType}`}
+      >
+        <StatusIndicator
+          status={
+            activeDowntime
+              ? 'downtime'
+              : unitsAtStation.length > 0
+                ? 'running'
+                : 'idle'
+          }
+          size="md"
+          pulse={unitsAtStation.length > 0 && !activeDowntime}
+        />
+        <AutoRefresh intervalSeconds={10} />
+      </DashboardPageHeader>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Active Downtime Alert */}
@@ -210,85 +173,85 @@ export default async function StationDetailPage({ params }: StationPageProps) {
 
         {/* Stats Row - Key metrics for drill-down */}
         <div className="mb-6 grid grid-cols-5 gap-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
               <Icons.unit className="h-4 w-4" />
               <span>Current WIP</span>
             </div>
-            <p className="mt-1 text-3xl font-bold text-gray-900">
+            <p className="mt-1 text-xl font-semibold text-slate-900">
               {unitsAtStation.length}
             </p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
               <Icons.pass className="h-4 w-4" />
               <span>Completed Today</span>
             </div>
-            <p className="mt-1 text-3xl font-bold text-gray-900">{completedToday}</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">{completedToday}</p>
           </div>
           {/* Avg Cycle Time - Critical demo metric */}
           <div className={`rounded-lg border p-4 ${
             avgCycleTime && estimatedTime && avgCycleTime > estimatedTime
               ? 'border-amber-300 bg-amber-50'
-              : 'border-gray-200 bg-white'
+              : 'border-slate-200 bg-white'
           }`}>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
               <Icons.timer className="h-4 w-4" />
               <span>Avg Cycle Time</span>
             </div>
-            <p className={`mt-1 text-3xl font-bold ${
+            <p className={`mt-1 text-xl font-semibold ${
               avgCycleTime && estimatedTime && avgCycleTime > estimatedTime
                 ? 'text-amber-600'
-                : 'text-gray-900'
+                : 'text-slate-900'
             }`}>
               {avgCycleTime ?? '—'}m
             </p>
             {estimatedTime && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Target: {estimatedTime}m
               </p>
             )}
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
               <Icons.gauge className="h-4 w-4" />
               <span>Pass Rate</span>
             </div>
             <p
-              className={`mt-1 text-3xl font-bold ${
+              className={`mt-1 text-xl font-semibold ${
                 passRate < 90 ? 'text-amber-600' : 'text-green-600'
               }`}
             >
               {passRate}%
             </p>
-            <p className="text-xs text-gray-500 mt-1">Target: ≥98%</p>
+            <p className="text-xs text-slate-500 mt-1">Target: ≥98%</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
               <Icons.clock className="h-4 w-4" />
               <span>Downtime Today</span>
             </div>
             <p
-              className={`mt-1 text-3xl font-bold ${
-                totalDowntimeMinutes > 30 ? 'text-amber-600' : 'text-gray-900'
+              className={`mt-1 text-xl font-semibold ${
+                totalDowntimeMinutes > 30 ? 'text-amber-600' : 'text-slate-900'
               }`}
             >
               {totalDowntimeMinutes}m
             </p>
-            <p className="text-xs text-gray-500 mt-1">Target: &lt;15m</p>
+            <p className="text-xs text-slate-500 mt-1">Target: &lt;15m</p>
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Units at Station */}
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <h3 className="font-semibold text-gray-900">Units at Station</h3>
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <h3 className="font-semibold text-slate-900">Units at Station</h3>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-slate-100">
               {unitsAtStation.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500">
-                  <Icons.unit className="mx-auto h-8 w-8 text-gray-300" />
+                <div className="px-4 py-8 text-center text-slate-500">
+                  <Icons.unit className="mx-auto h-8 w-8 text-slate-300" />
                   <p className="mt-2">No units currently at this station</p>
                 </div>
               ) : (
@@ -306,10 +269,10 @@ export default async function StationDetailPage({ params }: StationPageProps) {
                       className="flex items-center justify-between px-4 py-3"
                     >
                       <div>
-                        <p className="font-mono font-medium text-gray-900">
+                        <p className="font-mono font-medium text-slate-900">
                           {unit.serialNumber}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-slate-500">
                           {unit.workOrder.productCode} - Op {exec?.operation.sequence ?? '?'}
                           {exec?.operator && ` • ${exec.operator.name}`}
                         </p>
@@ -318,7 +281,7 @@ export default async function StationDetailPage({ params }: StationPageProps) {
                         <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
                           In Progress
                         </span>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm text-slate-500">
                           {cycleTime} min
                         </p>
                       </div>
@@ -330,14 +293,14 @@ export default async function StationDetailPage({ params }: StationPageProps) {
           </div>
 
           {/* Recent Activity */}
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <h3 className="font-semibold text-slate-900">Recent Activity</h3>
             </div>
-            <div className="max-h-96 divide-y divide-gray-100 overflow-y-auto">
+            <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
               {recentEvents.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500">
-                  <Icons.activity className="mx-auto h-8 w-8 text-gray-300" />
+                <div className="px-4 py-8 text-center text-slate-500">
+                  <Icons.activity className="mx-auto h-8 w-8 text-slate-300" />
                   <p className="mt-2">No recent activity</p>
                 </div>
               ) : (
@@ -364,10 +327,10 @@ export default async function StationDetailPage({ params }: StationPageProps) {
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm text-gray-900">
+                      <p className="text-sm text-slate-900">
                         {event.eventType.replace(/_/g, ' ')}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-slate-500">
                         {new Date(event.createdAt).toLocaleTimeString()}
                       </p>
                     </div>
@@ -378,13 +341,13 @@ export default async function StationDetailPage({ params }: StationPageProps) {
           </div>
 
           {/* Recent Operations */}
-          <div className="rounded-lg border border-gray-200 bg-white lg:col-span-2">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <h3 className="font-semibold text-gray-900">Recent Operations</h3>
+          <div className="rounded-lg border border-slate-200 bg-white lg:col-span-2">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <h3 className="font-semibold text-slate-900">Recent Operations</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-4 py-2">Serial</th>
                     <th className="px-4 py-2">Operator</th>
@@ -393,7 +356,7 @@ export default async function StationDetailPage({ params }: StationPageProps) {
                     <th className="px-4 py-2">Result</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-100">
                   {recentOperations.slice(0, 8).map((op) => {
                     const duration = op.completedAt
                       ? Math.round(
@@ -404,17 +367,17 @@ export default async function StationDetailPage({ params }: StationPageProps) {
                       : null;
 
                     return (
-                      <tr key={op.id} className="hover:bg-gray-50">
+                      <tr key={op.id} className="hover:bg-slate-50">
                         <td className="px-4 py-2 font-mono text-sm">
                           {op.unit.serialNumber}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-600">
+                        <td className="px-4 py-2 text-sm text-slate-600">
                           {op.operator?.name ?? '-'}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-600">
+                        <td className="px-4 py-2 text-sm text-slate-600">
                           {new Date(op.startedAt).toLocaleTimeString()}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-600">
+                        <td className="px-4 py-2 text-sm text-slate-600">
                           {duration !== null ? `${duration} min` : 'In progress'}
                         </td>
                         <td className="px-4 py-2">
@@ -434,7 +397,7 @@ export default async function StationDetailPage({ params }: StationPageProps) {
                               {op.result}
                             </span>
                           ) : (
-                            <span className="text-sm text-gray-400">-</span>
+                            <span className="text-sm text-slate-400">-</span>
                           )}
                         </td>
                       </tr>

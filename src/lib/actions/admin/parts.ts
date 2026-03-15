@@ -105,6 +105,7 @@ export async function createPartMaster(data: {
   }
 
   revalidatePath('/admin/parts');
+  revalidatePath('/dashboard');
 
   return part;
 }
@@ -163,6 +164,7 @@ export async function updatePartMaster(
   }
 
   revalidatePath('/admin/parts');
+  revalidatePath('/dashboard');
 
   return part;
 }
@@ -240,6 +242,7 @@ export async function linkPartSupplier(data: {
   }
 
   revalidatePath('/admin/parts');
+  revalidatePath('/dashboard');
 
   return partSupplier;
 }
@@ -277,4 +280,5 @@ export async function unlinkPartSupplier(partId: string, supplierId: string) {
   }
 
   revalidatePath('/admin/parts');
+  revalidatePath('/dashboard');
 }

@@ -13,6 +13,7 @@ import {
   type UpdateUserInput,
   type UserFiltersInput,
 } from '@/lib/validation/user-schemas';
+import { validate } from '@/lib/validation/schemas';
 import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 
@@ -22,7 +23,7 @@ import { Prisma } from '@prisma/client';
 export async function getUsers(filters?: UserFiltersInput) {
   await requireRole(['admin']);
 
-  const parsed = filters ? userFiltersSchema.parse(filters) : {};
+  const parsed = filters ? validate(userFiltersSchema, filters) : {};
 
   const where: Prisma.UserWhereInput = {};
 
@@ -82,7 +83,7 @@ export async function getUser(userId: string) {
 export async function createUser(data: CreateUserInput) {
   const admin = await requireRole(['admin']);
 
-  const validated = createUserSchema.parse(data);
+  const validated = validate(createUserSchema, data);
 
   // Check for duplicate email
   const existing = await prisma.user.findUnique({
@@ -142,6 +143,7 @@ export async function createUser(data: CreateUserInput) {
   }
 
   revalidatePath('/admin/users');
+  revalidatePath('/dashboard');
   return user;
 }
 
@@ -151,7 +153,7 @@ export async function createUser(data: CreateUserInput) {
 export async function updateUser(userId: string, data: UpdateUserInput) {
   const admin = await requireRole(['admin']);
 
-  const validated = updateUserSchema.parse(data);
+  const validated = validate(updateUserSchema, data);
 
   const existing = await prisma.user.findUnique({
     where: { id: userId },
@@ -249,6 +251,7 @@ export async function updateUser(userId: string, data: UpdateUserInput) {
 
   revalidatePath('/admin/users');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
   return updatedUser;
 }
 
@@ -287,6 +290,7 @@ export async function deactivateUser(userId: string) {
   );
 
   revalidatePath('/admin/users');
+  revalidatePath('/dashboard');
   return updatedUser;
 }
 
@@ -315,6 +319,7 @@ export async function reactivateUser(userId: string) {
   );
 
   revalidatePath('/admin/users');
+  revalidatePath('/dashboard');
   return updatedUser;
 }
 
@@ -374,6 +379,7 @@ export async function assignUserToStationAction(userId: string, stationId: strin
 
   revalidatePath('/admin/users');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
   return updatedUser;
 }
 
@@ -421,6 +427,7 @@ export async function assignUserToSites(userId: string, siteIds: string[]) {
   );
 
   revalidatePath('/admin/users');
+  revalidatePath('/dashboard');
   return updatedUser;
 }
 

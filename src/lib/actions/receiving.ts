@@ -342,6 +342,7 @@ export async function receiveAgainstPO(
 
   revalidatePath('/admin/receiving');
   revalidatePath('/admin/materials');
+  revalidatePath('/dashboard');
   revalidatePath('/dashboard/inventory');
 
   return result;

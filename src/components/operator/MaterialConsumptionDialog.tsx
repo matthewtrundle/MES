@@ -139,7 +139,7 @@ export function MaterialConsumptionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" data-testid="material-dialog">
         <DialogHeader>
           <DialogTitle>Record Material Consumption</DialogTitle>
         </DialogHeader>
@@ -162,6 +162,7 @@ export function MaterialConsumptionDialog({
                     return (
                       <div
                         key={item.materialCode}
+                        data-testid={`material-bom-item-${item.materialCode}`}
                         className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
                           isActive
                             ? 'border-blue-500 bg-blue-100'
@@ -259,6 +260,7 @@ export function MaterialConsumptionDialog({
                   return (
                     <Button
                       key={lot.id}
+                      data-testid={`material-lot-${lot.id}`}
                       variant="outline"
                       className="h-auto w-full justify-start py-3 text-left"
                       onClick={() => handleSelectLot(lot)}
@@ -289,7 +291,7 @@ export function MaterialConsumptionDialog({
             )}
 
             {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600" data-testid="material-error">
                 {error}
               </div>
             )}
@@ -324,6 +326,7 @@ export function MaterialConsumptionDialog({
               <Label htmlFor="quantity">Quantity to Consume</Label>
               <input
                 id="quantity"
+                data-testid="material-quantity-input"
                 type="number"
                 step="0.01"
                 min="0.01"
@@ -336,7 +339,7 @@ export function MaterialConsumptionDialog({
             </div>
 
             {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600" data-testid="material-error">
                 {error}
               </div>
             )}
@@ -354,6 +357,7 @@ export function MaterialConsumptionDialog({
                 Back
               </Button>
               <Button
+                data-testid="material-submit-btn"
                 className="bg-blue-600 hover:bg-blue-700"
                 onClick={handleSubmit}
                 disabled={isPending}

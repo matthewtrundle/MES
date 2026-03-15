@@ -1,10 +1,8 @@
 import { getTravelerData } from '@/lib/actions/traveler';
 import { ASSEMBLY_GROUP_LABELS, ASSEMBLY_GROUP_ORDER, type AssemblyGroup } from '@/lib/types/process-steps';
-import type { DataFieldDefinition } from '@/lib/types/process-steps';
+import { normalizeDataFields, type DataFieldDefinition } from '@/lib/types/process-steps';
 import { Badge } from '@/components/ui/badge';
 import { TravelerPrintButton } from './TravelerPrintButton';
-
-export const dynamic = 'force-dynamic';
 
 export const revalidate = 60;
 
@@ -115,7 +113,7 @@ export default async function TravelerPage({ params }: TravelerPageProps) {
       <div className="max-w-5xl mx-auto space-y-6 p-4 print:p-0 print:max-w-none">
         {/* Header with Print Button */}
         <div className="flex items-center justify-between no-print">
-          <h1 className="text-2xl font-bold text-slate-900">Production Traveler</h1>
+          <h1 className="text-lg font-bold text-slate-900">Production Traveler</h1>
           <TravelerPrintButton />
         </div>
 
@@ -123,7 +121,7 @@ export default async function TravelerPage({ params }: TravelerPageProps) {
         <div className="border-2 border-slate-900 rounded-lg overflow-hidden avoid-break print:border-black">
           <div className="bg-slate-900 text-white px-6 py-3 print:bg-black">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold tracking-wide">PRODUCTION TRAVELER</h2>
+              <h2 className="text-xl font-semibold tracking-wide">PRODUCTION TRAVELER</h2>
               <span className="text-sm opacity-80">Doc: TRV-{workOrder.orderNumber}</span>
             </div>
           </div>
@@ -267,7 +265,7 @@ export default async function TravelerPage({ params }: TravelerPageProps) {
                   </h4>
                 </div>
                 {steps.map((step) => {
-                  const fields = (step.dataFields ?? []) as DataFieldDefinition[];
+                  const fields = normalizeDataFields(step.dataFields);
                   const hasCaptures = step.captures.length > 0;
                   const latestCapture = step.captures[0];
                   const signedOff = latestCapture?.signedOff;

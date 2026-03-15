@@ -1,9 +1,7 @@
 import { prisma } from '@/lib/db/prisma';
-import Link from 'next/link';
 import { Icons, StatusIndicator, UnitStatusBadge } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
-
-export const dynamic = 'force-dynamic';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 
 export const revalidate = 30;
 
@@ -66,85 +64,29 @@ export default async function WIPPage() {
   const downtimeStations = stations.filter(s => s.downtimeIntervals.length > 0).length;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Dashboard</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-blue-100 p-2">
-                  <Icons.layers className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">
-                    Work in Progress
-                  </h1>
-                  <p className="text-sm text-gray-500">Station-by-station view</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <AutoRefresh intervalSeconds={15} />
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader title="Work in Progress" subtitle="Station-by-station view">
+        <AutoRefresh intervalSeconds={15} />
+      </DashboardPageHeader>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Summary Stats */}
-        <div className="mb-6 grid grid-cols-4 gap-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-blue-100 p-2">
-                <Icons.unit className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalWIP}</p>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Total WIP</p>
-              </div>
-            </div>
+        <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Total WIP</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-1">{totalWIP}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-green-100 p-2">
-                <Icons.running className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{activeStations}</p>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Active Stations</p>
-              </div>
-            </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Active Stations</p>
+            <p className="text-2xl font-semibold text-green-600 mt-1">{activeStations}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-amber-100 p-2">
-                <Icons.warning className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{downtimeStations}</p>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">In Downtime</p>
-              </div>
-            </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">In Downtime</p>
+            <p className="text-2xl font-semibold text-amber-600 mt-1">{downtimeStations}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-slate-100 p-2">
-                <Icons.station className="h-5 w-5 text-slate-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stations.length}</p>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Total Stations</p>
-              </div>
-            </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Total Stations</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-1">{stations.length}</p>
           </div>
         </div>
 
@@ -158,7 +100,7 @@ export default async function WIPPage() {
                   ? 'border-amber-300'
                   : station.units.length > 0
                     ? 'border-green-300'
-                    : 'border-gray-200'
+                    : 'border-slate-200'
               }`}
             >
               {/* Station Header */}
@@ -168,23 +110,23 @@ export default async function WIPPage() {
                     ? 'bg-amber-50 border-b border-amber-200'
                     : station.units.length > 0
                       ? 'bg-green-50 border-b border-green-200'
-                      : 'bg-gray-50 border-b border-gray-200'
+                      : 'bg-slate-50 border-b border-slate-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-700 shadow-sm border">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-bold text-slate-700 shadow-sm border">
                       {station.sequenceOrder}
                     </span>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{station.name}</h3>
-                      <p className="text-xs text-gray-500 capitalize">{station.stationType}</p>
+                      <h3 className="font-semibold text-slate-900">{station.name}</h3>
+                      <p className="text-xs text-slate-500 capitalize">{station.stationType}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-xl font-bold text-gray-900">{station.units.length}</p>
-                      <p className="text-xs text-gray-500">units</p>
+                      <p className="text-xl font-semibold text-slate-900">{station.units.length}</p>
+                      <p className="text-xs text-slate-500">units</p>
                     </div>
                     <StatusIndicator
                       status={
@@ -223,7 +165,7 @@ export default async function WIPPage() {
               {/* Units List */}
               <div className="p-4">
                 {station.units.length === 0 ? (
-                  <p className="py-4 text-center text-gray-400 text-sm">
+                  <p className="py-4 text-center text-slate-400 text-sm">
                     No units at this station
                   </p>
                 ) : (
@@ -241,15 +183,15 @@ export default async function WIPPage() {
                       return (
                         <div
                           key={unit.id}
-                          className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 p-3"
+                          className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 p-3"
                         >
                           <div className="flex items-center gap-3">
                             <div className="h-2 w-2 rounded-full bg-green-500 live-indicator" />
                             <div>
-                              <p className="font-mono font-semibold text-gray-900">
+                              <p className="font-mono font-semibold text-slate-900">
                                 {unit.serialNumber}
                               </p>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-slate-500">
                                 {unit.workOrder.orderNumber} - {unit.workOrder.productCode}
                               </p>
                             </div>
@@ -258,16 +200,16 @@ export default async function WIPPage() {
                           <div className="flex items-center gap-4">
                             {activeExecution && (
                               <div className="text-right">
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-slate-500">
                                   Step {activeExecution.operation.sequence}
                                 </p>
-                                <p className={`font-mono text-sm ${isOverTime ? 'text-amber-600 font-bold' : 'text-gray-600'}`}>
+                                <p className={`font-mono text-sm ${isOverTime ? 'text-amber-600 font-bold' : 'text-slate-600'}`}>
                                   {elapsedMinutes}m
                                   {estimatedMinutes && (
-                                    <span className="text-gray-400"> / {estimatedMinutes}m</span>
+                                    <span className="text-slate-400"> / {estimatedMinutes}m</span>
                                   )}
                                 </p>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-slate-500">
                                   {activeExecution.operator.name}
                                 </p>
                               </div>

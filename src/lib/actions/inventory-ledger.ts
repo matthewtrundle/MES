@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { emitEvent, generateUniqueIdempotencyKey } from '@/lib/db/events';
 import { requireRole } from '@/lib/auth/rbac';
 import { z } from 'zod';
-import { uuid, nonNegativeNumber } from '@/lib/validation/schemas';
+import { validate, uuid, nonNegativeNumber } from '@/lib/validation/schemas';
 
 // ── Validation Schemas ────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ export type ReferenceType = z.infer<typeof referenceTypeEnum>;
  * This is the core function that all inventory operations should use.
  */
 export async function recordTransaction(data: z.infer<typeof recordTransactionSchema>) {
-  const validated = recordTransactionSchema.parse(data);
+  const validated = validate(recordTransactionSchema, data);
   const user = await requireRole(['admin', 'supervisor', 'operator']);
 
   const lot = await prisma.materialLot.findUnique({
@@ -163,7 +163,7 @@ export async function getTransactionsSummary(
 ) {
   await requireRole(['admin', 'supervisor']);
 
-  const validated = transactionFilterSchema.parse(filters ?? {});
+  const validated = validate(transactionFilterSchema, filters ?? {});
 
   // Build where clause
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

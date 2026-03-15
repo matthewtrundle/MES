@@ -12,11 +12,12 @@ import {
   type CreateWebhookSubscriptionInput,
   type UpdateWebhookSubscriptionInput,
 } from '@/lib/validation/webhook-schemas';
+import { validate } from '@/lib/validation/schemas';
 
 // ── Create Webhook Subscription ─────────────────────────────────
 export async function createWebhookSubscription(data: CreateWebhookSubscriptionInput) {
   const user = await requireRole(['admin']);
-  const validated = createWebhookSubscriptionSchema.parse(data);
+  const validated = validate(createWebhookSubscriptionSchema, data);
 
   // Generate a random secret if not provided
   const secret = validated.secret ?? crypto.randomBytes(32).toString('hex');
@@ -55,6 +56,7 @@ export async function createWebhookSubscription(data: CreateWebhookSubscriptionI
   }
 
   revalidatePath('/admin/webhooks');
+  revalidatePath('/dashboard');
   return subscription;
 }
 
@@ -80,7 +82,7 @@ export async function updateWebhookSubscription(
   data: UpdateWebhookSubscriptionInput
 ) {
   const user = await requireRole(['admin']);
-  const validated = updateWebhookSubscriptionSchema.parse(data);
+  const validated = validate(updateWebhookSubscriptionSchema, data);
 
   const existing = await prisma.webhookSubscription.findUnique({
     where: { id },
@@ -128,6 +130,7 @@ export async function updateWebhookSubscription(
   }
 
   revalidatePath('/admin/webhooks');
+  revalidatePath('/dashboard');
   return subscription;
 }
 
@@ -170,6 +173,7 @@ export async function deleteWebhookSubscription(id: string) {
   }
 
   revalidatePath('/admin/webhooks');
+  revalidatePath('/dashboard');
 }
 
 // ── Get Webhook Deliveries ──────────────────────────────────────
@@ -239,4 +243,5 @@ export async function retryWebhookDelivery(deliveryId: string) {
   }
 
   revalidatePath('/admin/webhooks');
+  revalidatePath('/dashboard');
 }

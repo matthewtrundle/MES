@@ -10,8 +10,6 @@ import { DowntimePanel } from '@/components/operator/DowntimePanel';
 import { Icons } from '@/components/icons';
 import { getBomForStation } from '@/lib/actions/bom';
 
-export const dynamic = 'force-dynamic';
-
 interface StationPageProps {
   params: Promise<{ stationId: string }>;
 }
@@ -222,7 +220,7 @@ export default async function StationPage({ params }: StationPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-50/80" data-testid="station-page">
       {/* Station Header */}
       <StationHeader
         station={station}
@@ -246,7 +244,7 @@ export default async function StationPage({ params }: StationPageProps) {
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left Column - Work Orders */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1" data-testid="station-wo-column">
             <WorkOrderList
               workOrders={workOrders}
               stationId={stationId}
@@ -255,14 +253,14 @@ export default async function StationPage({ params }: StationPageProps) {
           </div>
 
           {/* Right Column - Active Units & Controls */}
-          <div className="space-y-4 lg:col-span-2">
+          <div className="space-y-4 lg:col-span-2" data-testid="station-units-column">
             {activeUnits.length === 0 ? (
               <div className="industrial-card">
                 <div className="py-16 text-center">
                   <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
                     <Icons.unit className="h-10 w-10 text-slate-400" />
                   </div>
-                  <p className="text-xl font-semibold text-slate-700">No active units</p>
+                  <p className="text-xl font-semibold text-slate-700" data-testid="station-no-active-units">No active units</p>
                   <p className="mt-2 text-slate-500 max-w-sm mx-auto">
                     Select a work order from the left panel and create a new unit to begin processing
                   </p>
@@ -296,7 +294,7 @@ export default async function StationPage({ params }: StationPageProps) {
             className="h-14 px-6 text-base border-2 border-slate-300 bg-white hover:bg-slate-50 shadow-sm"
             asChild
           >
-            <Link href="/station">
+            <Link href="/station" data-testid="station-change-btn">
               <Icons.chevronLeft className="mr-2 h-5 w-5" />
               Change Station
             </Link>

@@ -1,10 +1,8 @@
 import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
-import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { EventStream, EventTimeline } from '@/components/supervisor/EventStream';
-
-export const dynamic = 'force-dynamic';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 
 export const revalidate = 30;
 
@@ -131,87 +129,41 @@ export default async function EventsPage({
     (data.statsMap.get('ncr_dispositioned') ?? 0);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Dashboard</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-blue-100 p-2">
-                  <Icons.clock className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Event Stream</h1>
-                  <p className="text-sm text-gray-500">Real-time production activity</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-3 w-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
-                </span>
-                <span className="text-sm font-medium text-green-600">Live</span>
-              </div>
-              <AutoRefresh intervalSeconds={5} />
-            </div>
-          </div>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader title="Event Stream" subtitle="Real-time production activity">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-3 w-3">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
+          </span>
+          <span className="text-sm font-medium text-green-600">Live</span>
         </div>
-      </header>
+        <AutoRefresh intervalSeconds={5} />
+      </DashboardPageHeader>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Event Stats Summary */}
-        <div className="mb-6 grid grid-cols-5 gap-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <p className="text-sm text-gray-500">Total Events</p>
-            <p className="text-3xl font-bold text-gray-900">{data.totalEvents}</p>
-            <p className="text-xs text-gray-400">Today</p>
-          </div>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <p className="text-sm text-blue-700">Operations</p>
-            <p className="text-3xl font-bold text-blue-600">{operationEvents}</p>
-            <p className="text-xs text-blue-400">Started & Completed</p>
-          </div>
-          <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-            <p className="text-sm text-purple-700">Quality Checks</p>
-            <p className="text-3xl font-bold text-purple-600">{qualityEvents}</p>
-            <p className="text-xs text-purple-400">Recorded</p>
-          </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm text-amber-700">Downtime</p>
-            <p className="text-3xl font-bold text-amber-600">{downtimeEvents}</p>
-            <p className="text-xs text-amber-400">Started & Ended</p>
-          </div>
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">NCRs</p>
-            <p className="text-3xl font-bold text-red-600">{ncrEvents}</p>
-            <p className="text-xs text-red-400">Created & Dispositioned</p>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500 mb-6">
+          <span>Total Events <span className="ml-1 font-semibold text-slate-900">{data.totalEvents}</span></span>
+          <span>Operations <span className="ml-1 font-semibold text-blue-600">{operationEvents}</span></span>
+          <span>Quality Checks <span className="ml-1 font-semibold text-purple-600">{qualityEvents}</span></span>
+          <span>Downtime <span className="ml-1 font-semibold text-amber-600">{downtimeEvents}</span></span>
+          <span>NCRs <span className="ml-1 font-semibold text-red-600">{ncrEvents}</span></span>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-4">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1 space-y-4">
             {/* Event Type Filter */}
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Filter by Type</h3>
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="font-semibold text-slate-900 mb-3">Filter by Type</h3>
               <div className="space-y-2">
                 <Link
                   href="/dashboard/events"
                   className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                     !params.type
                       ? 'bg-blue-100 text-blue-700 font-medium'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   All Events
@@ -223,11 +175,11 @@ export default async function EventsPage({
                     className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                       params.type === type
                         ? 'bg-blue-100 text-blue-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     {type.replace(/_/g, ' ')}
-                    <span className="ml-2 text-xs text-gray-400">
+                    <span className="ml-2 text-xs text-slate-400">
                       ({data.statsMap.get(type) ?? 0})
                     </span>
                   </Link>
@@ -236,15 +188,15 @@ export default async function EventsPage({
             </div>
 
             {/* Station Filter */}
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Filter by Station</h3>
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="font-semibold text-slate-900 mb-3">Filter by Station</h3>
               <div className="space-y-2">
                 <Link
                   href={params.type ? `/dashboard/events?type=${params.type}` : '/dashboard/events'}
                   className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                     !params.station
                       ? 'bg-blue-100 text-blue-700 font-medium'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   All Stations
@@ -256,7 +208,7 @@ export default async function EventsPage({
                     className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                       params.station === station.id
                         ? 'bg-blue-100 text-blue-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     {station.name}
@@ -266,11 +218,11 @@ export default async function EventsPage({
             </div>
 
             {/* Recent Units */}
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Recent Units</h3>
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="font-semibold text-slate-900 mb-3">Recent Units</h3>
               <div className="space-y-2">
                 {data.recentUnits.length === 0 ? (
-                  <p className="text-sm text-gray-500">No units today</p>
+                  <p className="text-sm text-slate-500">No units today</p>
                 ) : (
                   data.recentUnits.map((unit) => (
                     <Link
@@ -279,7 +231,7 @@ export default async function EventsPage({
                       className={`block rounded-lg px-3 py-2 text-sm font-mono transition-colors ${
                         params.unit === unit.id
                           ? 'bg-blue-100 text-blue-700 font-medium'
-                          : 'text-gray-600 hover:bg-gray-100'
+                          : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
                       {unit.serialNumber}
@@ -292,17 +244,17 @@ export default async function EventsPage({
 
           {/* Event Stream */}
           <div className="lg:col-span-3">
-            <div className="rounded-lg border border-gray-200 bg-white">
-              <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">
+            <div className="rounded-lg border border-slate-200 bg-white">
+              <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900">
                   Event Feed
                   {params.type && (
-                    <span className="ml-2 text-sm font-normal text-gray-500">
+                    <span className="ml-2 text-sm font-normal text-slate-500">
                       ({params.type.replace(/_/g, ' ')})
                     </span>
                   )}
                 </h3>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-slate-500">
                   {data.events.length} events
                 </span>
               </div>

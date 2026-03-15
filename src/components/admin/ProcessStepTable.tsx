@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { updateProcessStepDefinition } from '@/lib/actions/admin/process-steps';
 import { ProcessStepEditDialog } from './ProcessStepEditDialog';
-import type { DataFieldDefinition } from '@/lib/types/process-steps';
+import { normalizeDataFields, type DataFieldDefinition } from '@/lib/types/process-steps';
 
 type StepDefinition = {
   id: string;
@@ -70,7 +70,7 @@ export function ProcessStepTable({ definitions, stations }: ProcessStepTableProp
         </TableHeader>
         <TableBody>
           {definitions.map((def) => {
-            const fields = (def.dataFields ?? []) as DataFieldDefinition[];
+            const fields = normalizeDataFields(def.dataFields);
             return (
               <TableRow key={def.id} className={!def.active ? 'opacity-50' : ''}>
                 <TableCell className="font-mono text-xs text-slate-400">

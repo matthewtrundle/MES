@@ -34,34 +34,58 @@ export function CreateUnitDialog({
   const handleCreate = () => {
     setError(null);
     startTransition(async () => {
+      let unit: { id: string; serialNumber: string } | null = null;
       try {
         // Create the unit
-        const unit = await createUnit(workOrderId, serialNumber || undefined);
+        unit = await createUnit(workOrderId, serialNumber || undefined);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create unit');
+        return;
+      }
 
+      try {
         // Get the operation for this station
         const response = await fetch(
           `/api/station/${stationId}/operation?workOrderId=${workOrderId}`
         );
+
+        if (!response.ok) {
+          throw new Error('Failed to find operation for this station');
+        }
+
         const { operationId } = await response.json();
 
-        if (operationId) {
-          // Start the operation automatically
-          await startOperation(unit.id, stationId, operationId);
+        if (!operationId) {
+          // Unit created but no operation found at this station
+          onOpenChange(false);
+          setSerialNumber('');
+          toast.warning(`Unit ${unit.serialNumber} created but no operation found at this station`);
+          router.refresh();
+          return;
         }
+
+        // Start the operation automatically
+        await startOperation(unit.id, stationId, operationId);
 
         onOpenChange(false);
         setSerialNumber('');
         toast.success(`Unit ${unit.serialNumber} created and started`);
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create unit');
+        // Unit was already created — don't show "Failed to create" message
+        onOpenChange(false);
+        setSerialNumber('');
+        toast.error(
+          `Unit ${unit.serialNumber} was created but could not start the operation: ${err instanceof Error ? err.message : 'Unknown error'}`
+        );
+        router.refresh();
       }
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" data-testid="create-unit-dialog">
         <DialogHeader>
           <DialogTitle>Start New Unit</DialogTitle>
         </DialogHeader>
@@ -71,21 +95,22 @@ export function CreateUnitDialog({
             <Label htmlFor="serial">Serial Number (optional)</Label>
             <input
               id="serial"
+              data-testid="create-unit-serial-input"
               type="text"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               placeholder="Leave blank to auto-generate"
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
               disabled={isPending}
               autoFocus
             />
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
               Scan a barcode or enter manually. Leave blank for auto-generated serial.
             </p>
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600" data-testid="create-unit-error">
               {error}
             </div>
           )}
@@ -97,6 +122,7 @@ export function CreateUnitDialog({
             className="flex-1"
             onClick={() => onOpenChange(false)}
             disabled={isPending}
+            data-testid="create-unit-cancel"
           >
             Cancel
           </Button>
@@ -105,6 +131,7 @@ export function CreateUnitDialog({
             size="lg"
             onClick={handleCreate}
             disabled={isPending}
+            data-testid="create-unit-submit"
           >
             {isPending ? 'Creating...' : 'Create & Start'}
           </Button>

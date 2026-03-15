@@ -5,8 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-
 export default async function ReceivingPage() {
   const [history, discrepancySummary] = await Promise.all([
     getReceivingHistory(30),
@@ -14,10 +12,10 @@ export default async function ReceivingPage() {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Receiving</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-xl font-semibold text-slate-900">Receiving</h1>
+        <p className="text-sm text-sm text-slate-500 mt-0.5">
           Receive materials against purchase orders with automated IQC routing
         </p>
       </div>
@@ -36,19 +34,19 @@ export default async function ReceivingPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white rounded-lg border border-amber-200 px-4 py-3">
                 <p className="text-xs text-slate-500 uppercase tracking-wide">Total POs Received</p>
-                <p className="text-2xl font-bold text-slate-900">{discrepancySummary.totalPOs}</p>
+                <p className="text-xl font-semibold text-slate-900">{discrepancySummary.totalPOs}</p>
               </div>
               <div className="bg-white rounded-lg border border-amber-200 px-4 py-3">
                 <p className="text-xs text-slate-500 uppercase tracking-wide">With Discrepancies</p>
-                <p className="text-2xl font-bold text-amber-700">{discrepancySummary.withDiscrepancies}</p>
+                <p className="text-lg font-bold text-amber-700">{discrepancySummary.withDiscrepancies}</p>
               </div>
               <div className="bg-white rounded-lg border border-red-200 px-4 py-3">
                 <p className="text-xs text-slate-500 uppercase tracking-wide">Over-Shipped Lines</p>
-                <p className="text-2xl font-bold text-red-600">{discrepancySummary.overShipped}</p>
+                <p className="text-lg font-bold text-red-600">{discrepancySummary.overShipped}</p>
               </div>
               <div className="bg-white rounded-lg border border-yellow-200 px-4 py-3">
                 <p className="text-xs text-slate-500 uppercase tracking-wide">Short-Shipped Lines</p>
-                <p className="text-2xl font-bold text-yellow-600">{discrepancySummary.shortShipped}</p>
+                <p className="text-lg font-bold text-yellow-600">{discrepancySummary.shortShipped}</p>
               </div>
             </div>
 

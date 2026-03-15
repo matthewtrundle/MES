@@ -29,7 +29,7 @@ export function StationBomChecklist({ items }: { items: BomItem[] }) {
   const hasGroups = sortedGroups.length > 1 || (sortedGroups.length === 1 && sortedGroups[0] !== 'ungrouped');
 
   return (
-    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200" data-testid="bom-checklist">
       <h3 className="text-sm font-semibold text-blue-800 mb-2">Required Materials</h3>
       {hasGroups ? (
         <div className="space-y-3">
@@ -46,7 +46,7 @@ export function StationBomChecklist({ items }: { items: BomItem[] }) {
                 </div>
                 <div className="space-y-1">
                   {groupItems.map((item) => (
-                    <div key={item.materialCode} className="flex items-center justify-between text-sm">
+                    <div key={item.materialCode} data-testid={`bom-item-${item.materialCode}`} className="flex items-center justify-between text-sm">
                       <span className="text-blue-900">
                         {item.description ?? item.materialCode}
                       </span>
@@ -63,7 +63,7 @@ export function StationBomChecklist({ items }: { items: BomItem[] }) {
       ) : (
         <div className="space-y-1.5">
           {items.map((item) => (
-            <div key={item.materialCode} className="flex items-center justify-between text-sm">
+            <div key={item.materialCode} data-testid={`bom-item-${item.materialCode}`} className="flex items-center justify-between text-sm">
               <span className="text-blue-900">
                 {item.description ?? item.materialCode}
               </span>

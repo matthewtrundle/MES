@@ -1,9 +1,7 @@
 import { prisma } from '@/lib/db/prisma';
-import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { PrintButton } from '@/components/supervisor/PrintButton';
-
-export const dynamic = 'force-dynamic';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 
 export const revalidate = 30;
 
@@ -222,81 +220,50 @@ export default async function ShiftReportPage() {
   const data = await getShiftReportData();
 
   return (
-    <div className="min-h-screen bg-gray-100 print:bg-white">
+    <div className="min-h-screen bg-slate-50/80 print:bg-white">
       {/* Header - Hidden on print, shows navigation */}
-      <header className="border-b border-gray-200 bg-white print:hidden">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Dashboard</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-indigo-100 p-2">
-                  <Icons.clock className="h-6 w-6 text-indigo-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Shift Report</h1>
-                  <p className="text-sm text-gray-500">{data.shiftName} Summary</p>
-                </div>
-              </div>
-            </div>
-            <PrintButton />
-          </div>
-        </div>
-      </header>
+      <div className="print:hidden">
+        <DashboardPageHeader title="Shift Report" subtitle={data.shiftName + ' Summary'}>
+          <PrintButton />
+        </DashboardPageHeader>
+      </div>
 
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8 print:max-w-none print:px-8">
         {/* Printable Report Header */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6 mb-6 print:border-0 print:p-0">
-          <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-4">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 mb-6 print:border-0 print:p-0">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">SHIFT HANDOFF REPORT</h1>
-              <p className="text-gray-500">Motor Assembly Plant</p>
+              <h1 className="text-lg font-bold text-slate-900">SHIFT HANDOFF REPORT</h1>
+              <p className="text-slate-500">Motor Assembly Plant</p>
             </div>
             <div className="text-right">
-              <p className="font-semibold text-gray-900">{data.shiftName}</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-semibold text-slate-900">{data.shiftName}</p>
+              <p className="text-sm text-slate-500">
                 {data.shiftStart.toLocaleDateString()} • {data.elapsedHours}h elapsed
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-400">
                 Generated: {data.generatedAt.toLocaleTimeString()}
               </p>
             </div>
           </div>
 
           {/* Executive Summary */}
-          <div className="grid grid-cols-5 gap-4 mb-6">
-            <div className="text-center p-3 rounded-lg bg-green-50 border border-green-200">
-              <p className="text-3xl font-bold text-green-600">{data.summary.unitsCompleted}</p>
-              <p className="text-xs text-green-700">Completed</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="rounded-lg border border-slate-200 bg-white p-4 text-center">
+              <p className="text-2xl font-semibold text-green-600">{data.summary.unitsCompleted}</p>
+              <p className="text-xs text-slate-500 mt-1">Completed</p>
             </div>
-            <div className="text-center p-3 rounded-lg bg-blue-50 border border-blue-200">
-              <p className="text-3xl font-bold text-blue-600">{data.summary.unitsInProgress}</p>
-              <p className="text-xs text-blue-700">In Progress</p>
+            <div className="rounded-lg border border-slate-200 bg-white p-4 text-center">
+              <p className="text-2xl font-semibold text-blue-600">{data.summary.unitsInProgress}</p>
+              <p className="text-xs text-slate-500 mt-1">In Progress</p>
             </div>
-            <div className="text-center p-3 rounded-lg bg-amber-50 border border-amber-200">
-              <p className="text-3xl font-bold text-amber-600">{data.downtime.totalMinutes}</p>
-              <p className="text-xs text-amber-700">Downtime (min)</p>
+            <div className="rounded-lg border border-slate-200 bg-white p-4 text-center">
+              <p className="text-2xl font-semibold text-amber-600">{data.downtime.totalMinutes}</p>
+              <p className="text-xs text-slate-500 mt-1">Downtime (min)</p>
             </div>
-            <div className="text-center p-3 rounded-lg bg-purple-50 border border-purple-200">
-              <p className="text-3xl font-bold text-purple-600">{data.quality.rate}%</p>
-              <p className="text-xs text-purple-700">Quality Rate</p>
-            </div>
-            <div className={`text-center p-3 rounded-lg border ${
-              data.oee.overall >= 85 ? 'bg-green-50 border-green-200' :
-              data.oee.overall >= 70 ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'
-            }`}>
-              <p className={`text-3xl font-bold ${
-                data.oee.overall >= 85 ? 'text-green-600' :
-                data.oee.overall >= 70 ? 'text-blue-600' : 'text-amber-600'
-              }`}>{data.oee.overall}%</p>
-              <p className="text-xs text-gray-700">OEE</p>
+            <div className="rounded-lg border border-slate-200 bg-white p-4 text-center">
+              <p className={`text-2xl font-semibold ${data.oee.overall >= 85 ? 'text-green-600' : data.oee.overall >= 70 ? 'text-blue-600' : 'text-amber-600'}`}>{data.oee.overall}%</p>
+              <p className="text-xs text-slate-500 mt-1">OEE</p>
             </div>
           </div>
         </div>
@@ -339,22 +306,22 @@ export default async function ShiftReportPage() {
           )}
 
           {/* WIP Status */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4 print:break-inside-avoid">
-            <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-200 pb-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 print:break-inside-avoid">
+            <h3 className="font-bold text-slate-900 mb-3 border-b border-slate-200 pb-2">
               WORK IN PROGRESS
             </h3>
             {data.unitsInProgress.length === 0 ? (
-              <p className="text-gray-500 text-sm">No units currently in progress</p>
+              <p className="text-slate-500 text-sm">No units currently in progress</p>
             ) : (
               <div className="space-y-2">
                 {data.unitsInProgress.slice(0, 6).map((unit) => (
                   <div key={unit.id} className="flex justify-between text-sm">
                     <span className="font-mono">{unit.serialNumber}</span>
-                    <span className="text-gray-500">{unit.stationName}</span>
+                    <span className="text-slate-500">{unit.stationName}</span>
                   </div>
                 ))}
                 {data.unitsInProgress.length > 6 && (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-slate-400">
                     +{data.unitsInProgress.length - 6} more units
                   </p>
                 )}
@@ -363,8 +330,8 @@ export default async function ShiftReportPage() {
           </div>
 
           {/* Downtime Summary */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4 print:break-inside-avoid">
-            <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-200 pb-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 print:break-inside-avoid">
+            <h3 className="font-bold text-slate-900 mb-3 border-b border-slate-200 pb-2">
               DOWNTIME SUMMARY
             </h3>
             {data.downtime.byReason.length === 0 ? (
@@ -377,7 +344,7 @@ export default async function ShiftReportPage() {
                     <span className="font-mono font-medium text-amber-600">{item.minutes} min</span>
                   </div>
                 ))}
-                <div className="pt-2 border-t border-gray-200 flex justify-between font-medium">
+                <div className="pt-2 border-t border-slate-200 flex justify-between font-medium">
                   <span>Total</span>
                   <span className="font-mono text-amber-600">{data.downtime.totalMinutes} min</span>
                 </div>
@@ -386,35 +353,35 @@ export default async function ShiftReportPage() {
           </div>
 
           {/* Quality Summary */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4 print:break-inside-avoid">
-            <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-200 pb-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 print:break-inside-avoid">
+            <h3 className="font-bold text-slate-900 mb-3 border-b border-slate-200 pb-2">
               QUALITY METRICS
             </h3>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-green-600">{data.quality.passCount}</p>
-                <p className="text-xs text-gray-500">Pass</p>
+                <p className="text-lg font-bold text-green-600">{data.quality.passCount}</p>
+                <p className="text-xs text-slate-500">Pass</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-600">{data.quality.failCount}</p>
-                <p className="text-xs text-gray-500">Fail</p>
+                <p className="text-lg font-bold text-red-600">{data.quality.failCount}</p>
+                <p className="text-xs text-slate-500">Fail</p>
               </div>
               <div>
-                <p className={`text-2xl font-bold ${
+                <p className={`text-lg font-bold ${
                   data.quality.rate >= 95 ? 'text-green-600' : 'text-amber-600'
                 }`}>{data.quality.rate}%</p>
-                <p className="text-xs text-gray-500">Rate</p>
+                <p className="text-xs text-slate-500">Rate</p>
               </div>
             </div>
           </div>
 
           {/* Station Productivity */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4 print:break-inside-avoid">
-            <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-200 pb-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 print:break-inside-avoid">
+            <h3 className="font-bold text-slate-900 mb-3 border-b border-slate-200 pb-2">
               STATION PRODUCTIVITY
             </h3>
             {data.stationProductivity.length === 0 ? (
-              <p className="text-gray-500 text-sm">No operations completed this shift</p>
+              <p className="text-slate-500 text-sm">No operations completed this shift</p>
             ) : (
               <div className="space-y-2">
                 {data.stationProductivity.slice(0, 5).map((station) => (
@@ -428,49 +395,49 @@ export default async function ShiftReportPage() {
           </div>
 
           {/* OEE Breakdown */}
-          <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white p-4 print:break-inside-avoid">
-            <h3 className="font-bold text-gray-900 mb-3 border-b border-gray-200 pb-2">
+          <div className="md:col-span-2 rounded-lg border border-slate-200 bg-white p-4 print:break-inside-avoid">
+            <h3 className="font-bold text-slate-900 mb-3 border-b border-slate-200 pb-2">
               OEE BREAKDOWN
             </h3>
             <div className="flex items-center justify-center gap-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">{data.oee.availability}%</p>
-                <p className="text-xs text-gray-500">Availability</p>
+                <p className="text-lg font-bold text-blue-600">{data.oee.availability}%</p>
+                <p className="text-xs text-slate-500">Availability</p>
               </div>
-              <span className="text-2xl text-gray-300">×</span>
+              <span className="text-2xl text-slate-300">×</span>
               <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{data.oee.performance}%</p>
-                <p className="text-xs text-gray-500">Performance</p>
+                <p className="text-lg font-bold text-green-600">{data.oee.performance}%</p>
+                <p className="text-xs text-slate-500">Performance</p>
               </div>
-              <span className="text-2xl text-gray-300">×</span>
+              <span className="text-2xl text-slate-300">×</span>
               <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">{data.oee.quality}%</p>
-                <p className="text-xs text-gray-500">Quality</p>
+                <p className="text-lg font-bold text-purple-600">{data.oee.quality}%</p>
+                <p className="text-xs text-slate-500">Quality</p>
               </div>
-              <span className="text-2xl text-gray-300">=</span>
+              <span className="text-2xl text-slate-300">=</span>
               <div className="text-center">
                 <p className={`text-3xl font-black ${
                   data.oee.overall >= 85 ? 'text-green-600' :
                   data.oee.overall >= 70 ? 'text-blue-600' : 'text-amber-600'
                 }`}>{data.oee.overall}%</p>
-                <p className="text-xs text-gray-500">OEE</p>
+                <p className="text-xs text-slate-500">OEE</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Signature Block (for print) */}
-        <div className="hidden print:block mt-8 pt-8 border-t border-gray-300">
+        <div className="hidden print:block mt-8 pt-8 border-t border-slate-300">
           <div className="grid grid-cols-2 gap-8">
             <div>
-              <p className="text-sm text-gray-500 mb-8">Outgoing Shift Supervisor</p>
-              <div className="border-b border-gray-400 mb-1" />
-              <p className="text-xs text-gray-400">Signature / Date</p>
+              <p className="text-sm text-slate-500 mb-8">Outgoing Shift Supervisor</p>
+              <div className="border-b border-slate-400 mb-1" />
+              <p className="text-xs text-slate-400">Signature / Date</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-8">Incoming Shift Supervisor</p>
-              <div className="border-b border-gray-400 mb-1" />
-              <p className="text-xs text-gray-400">Signature / Date</p>
+              <p className="text-sm text-slate-500 mb-8">Incoming Shift Supervisor</p>
+              <div className="border-b border-slate-400 mb-1" />
+              <p className="text-xs text-slate-400">Signature / Date</p>
             </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ import { emitEvent, generateUniqueIdempotencyKey } from '@/lib/db/events';
 import { requireRole } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { uuid, positiveNumber } from '@/lib/validation/schemas';
+import { validate, uuid, positiveNumber } from '@/lib/validation/schemas';
 
 const pickKitLineSchema = z.object({
   kitLineId: uuid,
@@ -88,6 +88,7 @@ export async function createKitForWorkOrder(workOrderId: string) {
   }
 
   revalidatePath('/admin/kitting');
+  revalidatePath('/dashboard');
   return kit;
 }
 
@@ -95,7 +96,7 @@ export async function createKitForWorkOrder(workOrderId: string) {
  * Pick a kit line — assign a material lot and record qty picked
  */
 export async function pickKitLine(data: z.infer<typeof pickKitLineSchema>) {
-  const validated = pickKitLineSchema.parse(data);
+  const validated = validate(pickKitLineSchema, data);
   const user = await requireRole(['admin', 'supervisor']);
 
   const kitLine = await prisma.kitLine.findUnique({
@@ -191,6 +192,7 @@ export async function pickKitLine(data: z.infer<typeof pickKitLineSchema>) {
   }
 
   revalidatePath('/admin/kitting');
+  revalidatePath('/dashboard');
   return { success: true };
 }
 
@@ -247,6 +249,7 @@ export async function issueKit(kitId: string) {
   }
 
   revalidatePath('/admin/kitting');
+  revalidatePath('/dashboard');
   return { success: true };
 }
 

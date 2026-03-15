@@ -25,6 +25,7 @@ interface StationData {
   // Enhanced data
   allUnits?: UnitAtStation[];
   throughputPerHour?: number;
+  avgCycleTime?: number | null;
 }
 
 function formatTimeAgo(date: Date | null | undefined): string {
@@ -57,9 +58,9 @@ export function ProductionFlow({ stations, className = '', uptimePercent, avgCyc
   const downtimeStations = stations.filter((s) => s.isDowntime).length;
 
   return (
-    <div className={`industrial-card industrial-texture ${className}`}>
+    <div className={`industrial-card industrial-texture overflow-hidden ${className}`}>
       {/* Header with industrial gradient */}
-      <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-3 rounded-t-lg">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-3 rounded-t-lg">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 shadow-sm">
             <Icons.activity className="h-4 w-4 text-white" />
@@ -106,14 +107,14 @@ export function ProductionFlow({ stations, className = '', uptimePercent, avgCyc
       </div>
 
       {/* Flow Visualization */}
-      <div className="p-4">
-        <div className="flex items-stretch gap-1.5">
+      <div className="p-4 overflow-x-auto">
+        <div className="flex items-stretch gap-1.5" style={{ minWidth: `${sortedStations.length * 150}px` }}>
           {sortedStations.map((station, index) => (
-            <div key={station.id} className="flex flex-1 items-stretch min-w-0">
+            <div key={station.id} className="flex flex-1 items-stretch" style={{ minWidth: '160px' }}>
               {/* Station Card - Compact version */}
               <Link
                 href={`/dashboard/station/${station.id}`}
-                className={`relative flex-1 min-h-[140px] rounded-lg p-3 transition-all cursor-pointer hover:scale-[1.01] ${
+                className={`relative flex-1 min-h-[150px] rounded-lg p-3 transition-all cursor-pointer hover:scale-[1.01] ${
                   station.id === bottleneckStationId
                     ? 'ring-2 ring-red-400 ring-offset-1 bg-red-50 border-red-300 shadow-lg'
                     : station.isDowntime
@@ -150,15 +151,25 @@ export function ProductionFlow({ stations, className = '', uptimePercent, avgCyc
                 {/* Station name - compact */}
                 <div className="mb-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-700 flex-shrink-0">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700 flex-shrink-0">
                       {station.sequenceOrder}
                     </span>
-                    <h4 className="font-semibold text-gray-900 text-sm truncate">{station.name}</h4>
+                    <h4 className="font-semibold text-slate-900 text-sm truncate">{station.name}</h4>
                   </div>
+                  {/* State label badge */}
+                  <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                    station.isDowntime
+                      ? 'bg-red-100 text-red-700'
+                      : station.wipCount > 0
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {station.isDowntime ? 'Down' : station.wipCount > 0 ? 'Active' : 'Idle'}
+                  </span>
                 </div>
 
                 {/* Last activity - simplified */}
-                <div className="mb-2 flex items-center gap-1 text-[10px] text-gray-500">
+                <div className="mb-2 flex items-center gap-1 text-[10px] text-slate-500">
                   <Icons.clock className="h-3 w-3 flex-shrink-0" />
                   <span className="truncate">{formatTimeAgo(station.lastActivity)}</span>
                 </div>
@@ -173,6 +184,11 @@ export function ProductionFlow({ stations, className = '', uptimePercent, avgCyc
                     </div>
                   </div>
                 </div>
+                {station.avgCycleTime != null && (
+                  <div className="text-[10px] text-slate-500 mb-1">
+                    Avg: <span className="font-medium">{Math.round(station.avgCycleTime)}m</span>
+                  </div>
+                )}
 
                 {/* Operator or status badge */}
                 <div className="mt-auto">
@@ -191,10 +207,10 @@ export function ProductionFlow({ stations, className = '', uptimePercent, avgCyc
 
                 {/* Active unit display - simplified for space */}
                 {station.allUnits && station.allUnits.length > 0 ? (
-                  <div className="mt-1 space-y-1 border-t border-gray-100 pt-1">
+                  <div className="mt-1 space-y-1 border-t border-slate-100 pt-1">
                     {station.allUnits.slice(0, 2).map((unit, unitIndex) => (
                       <div key={unit.serialNumber} className="flex items-center gap-1.5 text-[10px]">
-                        <div className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${unitIndex === 0 ? 'bg-green-500 live-indicator' : 'bg-gray-300'}`} />
+                        <div className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${unitIndex === 0 ? 'bg-green-500 live-indicator' : 'bg-slate-300'}`} />
                         <span className="font-mono font-medium text-slate-700 truncate">{unit.serialNumber}</span>
                         <span className="text-slate-400 ml-auto">{unit.cycleTime}m</span>
                       </div>
@@ -204,7 +220,7 @@ export function ProductionFlow({ stations, className = '', uptimePercent, avgCyc
                     )}
                   </div>
                 ) : station.currentUnit ? (
-                  <div className="mt-1 border-t border-gray-100 pt-1">
+                  <div className="mt-1 border-t border-slate-100 pt-1">
                     <div className="flex items-center gap-1.5 text-[10px]">
                       <div className="h-1.5 w-1.5 rounded-full bg-green-500 live-indicator flex-shrink-0" />
                       <span className="font-mono font-medium text-slate-700 truncate">{station.currentUnit}</span>
@@ -219,7 +235,7 @@ export function ProductionFlow({ stations, className = '', uptimePercent, avgCyc
               {/* Flow arrow - minimal */}
               {index < sortedStations.length - 1 && (
                 <div className="flex items-center">
-                  <Icons.chevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                  <Icons.chevronRight className="h-4 w-4 text-slate-300 flex-shrink-0" />
                 </div>
               )}
             </div>
@@ -228,8 +244,8 @@ export function ProductionFlow({ stations, className = '', uptimePercent, avgCyc
       </div>
 
       {/* Legend */}
-      <div className="border-t border-gray-200 bg-gray-50 px-4 py-2">
-        <div className="flex items-center justify-center gap-6 text-xs text-gray-500">
+      <div className="border-t border-slate-200 bg-slate-50 px-4 py-2">
+        <div className="flex items-center justify-center gap-6 text-xs text-slate-500">
           <div className="flex items-center gap-1.5">
             <StatusIndicator status="running" size="sm" pulse />
             <span>Active</span>
@@ -277,14 +293,14 @@ export function ProductionFlowCompact({ stations, className = '' }: ProductionFl
                 ? 'border-amber-400 bg-amber-100 text-amber-700'
                 : station.wipCount > 0
                   ? 'border-green-400 bg-green-100 text-green-700'
-                  : 'border-gray-200 bg-gray-100 text-gray-500'
+                  : 'border-slate-200 bg-slate-100 text-slate-500'
             }`}
             title={`${station.name}: ${station.wipCount} WIP`}
           >
             {station.wipCount}
           </div>
           {index < sortedStations.length - 1 && (
-            <Icons.arrowRight className="mx-0.5 h-4 w-4 text-gray-300" />
+            <Icons.arrowRight className="mx-0.5 h-4 w-4 text-slate-300" />
           )}
         </div>
       ))}

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { emitEvent, generateIdempotencyKey } from '@/lib/db/events';
 import { requireUser } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
-import { validateCapturedData, type DataFieldDefinition } from '@/lib/types/process-steps';
+import { validateCapturedData, normalizeDataFields } from '@/lib/types/process-steps';
 
 /**
  * Capture step data for a given execution and step definition.
@@ -27,7 +27,7 @@ export async function captureStepData(
     throw new Error('Process step definition not found');
   }
 
-  const dataFields = stepDefinition.dataFields as unknown as DataFieldDefinition[];
+  const dataFields = normalizeDataFields(stepDefinition.dataFields);
 
   // Validate captured data against field definitions
   const validation = validateCapturedData(dataFields, capturedData);
@@ -98,6 +98,7 @@ export async function captureStepData(
   });
 
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return {
     capture,
@@ -184,6 +185,7 @@ export async function signOffStep(executionId: string, stepDefinitionId: string)
   });
 
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return updated;
 }

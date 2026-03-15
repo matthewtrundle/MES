@@ -5,7 +5,7 @@ import { emitEvent, generateIdempotencyKey } from '@/lib/db/events';
 import { requireRole, requireUser } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
 import { v4 as uuidv4 } from 'uuid';
-import { createUnitSchema, startOperationSchema, completeOperationSchema } from '@/lib/validation/schemas';
+import { validate, createUnitSchema, startOperationSchema, completeOperationSchema } from '@/lib/validation/schemas';
 
 /**
  * Generate serial number based on site config
@@ -36,7 +36,7 @@ async function generateSerialNumber(siteId: string): Promise<string> {
  * Create a new unit for a work order
  */
 export async function createUnit(workOrderId: string, serialNumber?: string) {
-  createUnitSchema.parse({ workOrderId, serialNumber });
+  validate(createUnitSchema, { workOrderId, serialNumber });
   const user = await requireUser();
 
   const workOrder = await prisma.workOrder.findUnique({
@@ -105,6 +105,7 @@ export async function createUnit(workOrderId: string, serialNumber?: string) {
 
   revalidatePath('/station');
   revalidatePath('/dashboard');
+  revalidatePath('/dashboard/production');
 
   return unit;
 }
@@ -117,7 +118,7 @@ export async function startOperation(
   stationId: string,
   operationId: string
 ) {
-  startOperationSchema.parse({ unitId, stationId, operationId });
+  validate(startOperationSchema, { unitId, stationId, operationId });
   const user = await requireUser();
 
   const unit = await prisma.unit.findUnique({
@@ -200,6 +201,7 @@ export async function startOperation(
 
   revalidatePath('/station');
   revalidatePath('/dashboard');
+  revalidatePath('/dashboard/production');
 
   return execution;
 }
@@ -212,7 +214,7 @@ export async function completeOperation(
   result: 'pass' | 'fail' | 'rework' = 'pass',
   notes?: string
 ) {
-  completeOperationSchema.parse({ executionId, result, notes });
+  validate(completeOperationSchema, { executionId, result, notes });
   const user = await requireUser();
 
   const execution = await prisma.unitOperationExecution.findUnique({
@@ -329,6 +331,7 @@ export async function completeOperation(
 
   revalidatePath('/station');
   revalidatePath('/dashboard');
+  revalidatePath('/dashboard/production');
 
   return { unitStatus, nextOperation };
 }

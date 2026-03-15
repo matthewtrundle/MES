@@ -5,7 +5,7 @@ import { emitEvent, generateUniqueIdempotencyKey } from '@/lib/db/events';
 import { requireRole } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { uuid, nonNegativeNumber } from '@/lib/validation/schemas';
+import { validate, uuid, nonNegativeNumber } from '@/lib/validation/schemas';
 
 const adjustInventorySchema = z.object({
   lotId: uuid,
@@ -17,7 +17,7 @@ const adjustInventorySchema = z.object({
  * Adjust inventory quantity for a material lot (with audit trail + ledger transaction)
  */
 export async function adjustInventory(data: z.infer<typeof adjustInventorySchema>) {
-  const validated = adjustInventorySchema.parse(data);
+  const validated = validate(adjustInventorySchema, data);
   const user = await requireRole(['admin']);
 
   const lot = await prisma.materialLot.findUnique({

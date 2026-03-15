@@ -8,11 +8,12 @@ import { logAuditTrail } from '@/lib/db/audit';
 import { hashApiKey } from '@/lib/auth/api-auth';
 import { revalidatePath } from 'next/cache';
 import { createApiKeySchema, type CreateApiKeyInput } from '@/lib/validation/api-key-schemas';
+import { validate } from '@/lib/validation/schemas';
 
 // ── Create API Key ──────────────────────────────────────────────────
 export async function createApiKey(data: CreateApiKeyInput) {
   const user = await requireRole(['admin']);
-  const validated = createApiKeySchema.parse(data);
+  const validated = validate(createApiKeySchema, data);
 
   // Generate the raw key: mes_ + 32 hex chars (16 random bytes)
   const rawKey = `mes_${randomBytes(16).toString('hex')}`;
@@ -54,6 +55,7 @@ export async function createApiKey(data: CreateApiKeyInput) {
   }
 
   revalidatePath('/admin/api-keys');
+  revalidatePath('/dashboard');
 
   // Return the raw key ONCE — it cannot be retrieved again
   return {
@@ -139,6 +141,7 @@ export async function revokeApiKey(id: string) {
   }
 
   revalidatePath('/admin/api-keys');
+  revalidatePath('/dashboard');
 }
 
 // ── Rotate API Key ──────────────────────────────────────────────────
@@ -178,6 +181,7 @@ export async function rotateApiKey(id: string) {
   });
 
   revalidatePath('/admin/api-keys');
+  revalidatePath('/dashboard');
 
   return result;
 }

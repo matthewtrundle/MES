@@ -16,14 +16,19 @@ export function DowntimeStartButton({ stationId }: DowntimeStartButtonProps) {
 
   const handleStart = () => {
     startTransition(async () => {
-      await startDowntime(stationId);
-      toast.warning('Downtime started — select a reason');
-      router.refresh();
+      try {
+        await startDowntime(stationId);
+        toast.warning('Downtime started — select a reason');
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to start downtime');
+      }
     });
   };
 
   return (
     <Button
+      data-testid="downtime-start-btn"
       variant="destructive"
       size="lg"
       className="px-8"
@@ -45,14 +50,19 @@ export function DowntimeEndButton({ downtimeId }: DowntimeEndButtonProps) {
 
   const handleEnd = () => {
     startTransition(async () => {
-      await endDowntime(downtimeId);
-      toast.success('Downtime ended — station back online');
-      router.refresh();
+      try {
+        await endDowntime(downtimeId);
+        toast.success('Downtime ended — station back online');
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to end downtime');
+      }
     });
   };
 
   return (
     <Button
+      data-testid="downtime-end-btn"
       size="lg"
       className="bg-green-600 px-8 hover:bg-green-700"
       onClick={handleEnd}

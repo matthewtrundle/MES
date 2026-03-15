@@ -1,8 +1,5 @@
 import { getInspectionQueue, getCompletedInspections } from '@/lib/actions/iqc';
 import { IQCInspectionQueue } from '@/components/admin/IQCInspectionQueue';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
-export const dynamic = 'force-dynamic';
 
 export default async function IQCPage() {
   const [queue, completed] = await Promise.all([
@@ -18,75 +15,41 @@ export default async function IQCPage() {
   ).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">IQC Inspections</h1>
-        <p className="text-slate-500 mt-1">
-          Incoming Quality Control - inspect and disposition received material lots
+        <h1 className="text-xl font-semibold text-slate-900">IQC Inspections</h1>
+        <p className="text-sm text-slate-500 mt-0.5">
+          {pendingCount} pending &middot; {inProgressCount} in progress &middot;{' '}
+          <span className="text-green-600">{conformingCount} conforming</span>
+          {nonconformingCount > 0 && (
+            <span className="text-red-600"> &middot; {nonconformingCount} nonconforming</span>
+          )}
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-slate-700">{pendingCount}</div>
-            <p className="text-xs text-slate-500">Pending Inspection</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{inProgressCount}</div>
-            <p className="text-xs text-slate-500">In Progress</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">{conformingCount}</div>
-            <p className="text-xs text-slate-500">Conforming (completed)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-red-600">{nonconformingCount}</div>
-            <p className="text-xs text-slate-500">Nonconforming (completed)</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Active Queue */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Inspection Queue</CardTitle>
-          <CardDescription>
-            {queue.length} inspection{queue.length !== 1 ? 's' : ''} requiring attention
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div>
+        <h2 className="text-sm font-medium text-slate-700 mb-2">Inspection Queue ({queue.length})</h2>
+        <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
           <IQCInspectionQueue inspections={queue} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Completed Inspections */}
       {completed.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Completed Inspections</CardTitle>
-            <CardDescription>
-              Last {completed.length} completed inspection{completed.length !== 1 ? 's' : ''}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
+        <div>
+          <h2 className="text-sm font-medium text-slate-700 mb-2">Recent Completed ({completed.length})</h2>
+          <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+            <table className="table-enhanced">
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 px-3 text-slate-500 font-medium">Result</th>
-                  <th className="text-left py-2 px-3 text-slate-500 font-medium">Lot Number</th>
-                  <th className="text-left py-2 px-3 text-slate-500 font-medium">Material</th>
-                  <th className="text-left py-2 px-3 text-slate-500 font-medium">Supplier</th>
-                  <th className="text-left py-2 px-3 text-slate-500 font-medium">Inspector</th>
-                  <th className="text-left py-2 px-3 text-slate-500 font-medium">Completed</th>
-                  <th className="text-right py-2 px-3 text-slate-500 font-medium">Measurements</th>
+                <tr>
+                  <th>Result</th>
+                  <th>Lot Number</th>
+                  <th>Material</th>
+                  <th>Supplier</th>
+                  <th>Inspector</th>
+                  <th>Completed</th>
+                  <th className="text-right">Measurements</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,30 +62,30 @@ export default async function IQCPage() {
                   ).length;
 
                   return (
-                    <tr key={inspection.id} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-2 px-3">
+                    <tr key={inspection.id}>
+                      <td>
                         <ResultBadge result={inspection.overallResult} />
                       </td>
-                      <td className="py-2 px-3 font-mono">
+                      <td className="font-mono">
                         {inspection.materialLot.lotNumber}
                       </td>
-                      <td className="py-2 px-3 font-mono">
+                      <td className="font-mono">
                         {inspection.materialLot.materialCode}
                       </td>
-                      <td className="py-2 px-3">
+                      <td>
                         {inspection.materialLot.supplierRef?.name ??
                           inspection.materialLot.supplier ??
                           '-'}
                       </td>
-                      <td className="py-2 px-3">
+                      <td>
                         {inspection.inspector?.name ?? '-'}
                       </td>
-                      <td className="py-2 px-3 text-slate-500">
+                      <td className="text-slate-500">
                         {inspection.completedAt
                           ? new Date(inspection.completedAt).toLocaleDateString()
                           : '-'}
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="text-right">
                         <span className="text-green-600">{passCount}P</span>
                         {failCount > 0 && (
                           <span className="text-red-600 ml-1">/ {failCount}F</span>
@@ -133,8 +96,8 @@ export default async function IQCPage() {
                 })}
               </tbody>
             </table>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

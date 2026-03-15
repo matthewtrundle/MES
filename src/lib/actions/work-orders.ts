@@ -5,7 +5,7 @@ import { emitEvent, generateIdempotencyKey, generateUniqueIdempotencyKey } from 
 import { requireRole } from '@/lib/auth/rbac';
 import { logAuditTrail } from '@/lib/db/audit';
 import { revalidatePath } from 'next/cache';
-import { createWorkOrderSchema, cancelWorkOrderSchema } from '@/lib/validation/schemas';
+import { validate, createWorkOrderSchema, cancelWorkOrderSchema } from '@/lib/validation/schemas';
 import { reserveInventoryForWorkOrder, releaseReservation } from './inventory-reservation';
 
 /**
@@ -280,7 +280,7 @@ export async function getStationWorkOrders(stationId: string) {
  * Only pending or released work orders can be cancelled
  */
 export async function cancelWorkOrder(workOrderId: string, reason: string) {
-  const validated = cancelWorkOrderSchema.parse({ workOrderId, reason });
+  const validated = validate(cancelWorkOrderSchema, { workOrderId, reason });
   const user = await requireRole(['admin', 'supervisor']);
 
   const workOrder = await prisma.workOrder.findUnique({
@@ -357,7 +357,7 @@ export async function createWorkOrder(data: {
   targetStartDate?: Date;
   notes?: string;
 }) {
-  createWorkOrderSchema.parse(data);
+  validate(createWorkOrderSchema, data);
   const user = await requireRole(['admin']);
 
   // Check for duplicate order number
@@ -429,6 +429,7 @@ export async function createWorkOrder(data: {
   });
 
   revalidatePath('/admin/work-orders');
+  revalidatePath('/dashboard');
 
   return workOrder;
 }
@@ -698,6 +699,7 @@ export async function updateWorkOrderCustomerInfo(
   );
 
   revalidatePath('/admin/work-orders');
+  revalidatePath('/dashboard');
 
   return updatedWorkOrder;
 }

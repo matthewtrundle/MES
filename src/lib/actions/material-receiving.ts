@@ -5,7 +5,7 @@ import { emitEvent, generateUniqueIdempotencyKey } from '@/lib/db/events';
 import { requireRole } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { uuid, positiveNumber } from '@/lib/validation/schemas';
+import { validate, uuid, positiveNumber } from '@/lib/validation/schemas';
 
 const receiveMaterialLotSchema = z.object({
   lotNumber: z.string().min(1, 'Lot number is required').max(50),
@@ -34,7 +34,7 @@ const updateMaterialLotStatusSchema = z.object({
  * Receive a new material lot into inventory
  */
 export async function receiveMaterialLot(data: z.infer<typeof receiveMaterialLotSchema>) {
-  const validated = receiveMaterialLotSchema.parse(data);
+  const validated = validate(receiveMaterialLotSchema, data);
   const user = await requireRole(['admin', 'supervisor']);
 
   // Check for duplicate lot number
@@ -111,6 +111,7 @@ export async function receiveMaterialLot(data: z.infer<typeof receiveMaterialLot
   });
 
   revalidatePath('/admin/materials');
+  revalidatePath('/dashboard');
   revalidatePath('/dashboard/inventory');
 
   return lot;
@@ -120,7 +121,7 @@ export async function receiveMaterialLot(data: z.infer<typeof receiveMaterialLot
  * Update the status of a material lot
  */
 export async function updateMaterialLotStatus(data: z.infer<typeof updateMaterialLotStatusSchema>) {
-  const validated = updateMaterialLotStatusSchema.parse(data);
+  const validated = validate(updateMaterialLotStatusSchema, data);
   const user = await requireRole(['admin', 'supervisor']);
 
   const lot = await prisma.materialLot.findUnique({
@@ -137,6 +138,7 @@ export async function updateMaterialLotStatus(data: z.infer<typeof updateMateria
   });
 
   revalidatePath('/admin/materials');
+  revalidatePath('/dashboard');
   revalidatePath('/dashboard/inventory');
 
   return updatedLot;

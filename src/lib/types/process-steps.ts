@@ -17,6 +17,33 @@ export interface DataFieldDefinition {
 }
 
 /**
+ * Normalize raw dataFields from the database into DataFieldDefinition[].
+ *
+ * The seed data (and possibly admin-created entries) may store fields using
+ * alternate property names:
+ *   key  → id
+ *   label → name
+ *   type: 'measurement' → type: 'number'
+ *
+ * This function handles all variants defensively.
+ */
+export function normalizeDataFields(raw: unknown): DataFieldDefinition[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((f: Record<string, unknown>) => ({
+    id: (f.id ?? f.key ?? 'unknown') as string,
+    name: (f.name ?? f.label ?? 'Unknown Field') as string,
+    type: (f.type === 'measurement' ? 'number' : f.type ?? 'text') as DataFieldType,
+    unit: f.unit as string | undefined,
+    required: f.required === true,
+    min: typeof f.min === 'number' ? f.min : undefined,
+    max: typeof f.max === 'number' ? f.max : undefined,
+    options: Array.isArray(f.options) ? f.options : undefined,
+    description: (f.description as string) ?? undefined,
+  }));
+}
+
+/**
  * Assembly group categories for BLDC motor production
  */
 export type AssemblyGroup =
@@ -80,9 +107,11 @@ export function validateCapturedData(
     const value = data[field.id];
 
     // Check required fields
+    const fieldLabel = field.name || field.id || 'Unknown field';
+
     if (field.required) {
       if (value === undefined || value === null || value === '') {
-        errors[field.id] = `${field.name} is required`;
+        errors[field.id] = `${fieldLabel} is required`;
         continue;
       }
     }
@@ -97,7 +126,7 @@ export function validateCapturedData(
       case 'number': {
         const numValue = typeof value === 'number' ? value : parseFloat(String(value));
         if (isNaN(numValue)) {
-          errors[field.id] = `${field.name} must be a valid number`;
+          errors[field.id] = `${fieldLabel} must be a valid number`;
           break;
         }
         if (field.min !== undefined && numValue < field.min) {
@@ -110,7 +139,7 @@ export function validateCapturedData(
       }
       case 'select': {
         if (field.options && !field.options.includes(String(value))) {
-          errors[field.id] = `${field.name}: invalid selection`;
+          errors[field.id] = `${fieldLabel}: invalid selection`;
         }
         break;
       }

@@ -69,6 +69,8 @@ export async function createQualityCheckDefinition(data: {
 
   revalidatePath('/admin/quality-checks');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
+  revalidatePath('/dashboard/quality');
 
   return definition;
 }
@@ -114,6 +116,8 @@ export async function updateQualityCheckDefinition(
 
   revalidatePath('/admin/quality-checks');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
+  revalidatePath('/dashboard/quality');
 
   return definition;
 }
@@ -162,6 +166,8 @@ export async function deleteQualityCheckDefinition(id: string) {
 
   revalidatePath('/admin/quality-checks');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
+  revalidatePath('/dashboard/quality');
 }
 
 export async function getStationsForQualityChecks() {

@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -165,9 +163,12 @@ export default function WorkOrdersPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        await refreshData();
         const response = await fetch('/api/admin/work-orders');
         const data = await response.json();
+        setWorkOrders(data.workOrders || []);
+        setSites(data.sites || []);
+        setRoutings(data.routings || []);
+        // Auto-select first site/routing so dropdowns aren't empty
         if (data.sites?.[0]) {
           setSelectedSite(data.sites[0].id);
         }
@@ -193,6 +194,12 @@ export default function WorkOrdersPage() {
     setActionError(null);
 
     const formData = new FormData(e.currentTarget);
+
+    if (!selectedSite) {
+      setActionError('Please select a site');
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       await createWorkOrder({
@@ -356,16 +363,24 @@ export default function WorkOrdersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Work Orders</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-xl font-semibold text-slate-900">Work Orders</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
             Create and manage production work orders
           </p>
         </div>
 
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <Dialog open={createOpen} onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (open) {
+            // Ensure defaults are set when dialog opens
+            if (!selectedSite && sites.length > 0) setSelectedSite(sites[0].id);
+            if (!selectedRouting && routings.length > 0) setSelectedRouting(routings[0].id);
+            setActionError(null);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -571,15 +586,11 @@ export default function WorkOrdersPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Work Orders</CardTitle>
-          <CardDescription>
-            {filteredWorkOrders.length} work order{filteredWorkOrders.length !== 1 ? 's' : ''}
-            {statusFilter !== 'all' ? ` (${getStatusLabel(statusFilter)})` : ''}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+        <div className="px-4 py-2 border-b border-slate-100 text-sm text-slate-500">
+          {filteredWorkOrders.length} work order{filteredWorkOrders.length !== 1 ? 's' : ''}
+          {statusFilter !== 'all' ? ` (${getStatusLabel(statusFilter)})` : ''}
+        </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -688,8 +699,7 @@ export default function WorkOrdersPage() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Work Order Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>

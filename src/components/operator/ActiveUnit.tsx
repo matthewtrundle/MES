@@ -101,7 +101,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
 
   return (
     <>
-      <div className={`industrial-card overflow-hidden ${disabled ? 'opacity-50' : ''}`}>
+      <div data-testid={`active-unit-${unit.id}`} className={`industrial-card overflow-hidden ${disabled ? 'opacity-50' : ''}`}>
         {/* Unit Header */}
         <div className={`px-5 py-4 ${
           unit.status === 'rework'
@@ -114,7 +114,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
                 <Icons.unit className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">{unit.serialNumber}</h2>
+                <h2 data-testid={`active-unit-serial-${unit.id}`} className="text-2xl font-bold text-white tracking-tight">{unit.serialNumber}</h2>
                 <p className="text-sm text-white/80">
                   {unit.workOrder.orderNumber} • {unit.workOrder.productCode}
                 </p>
@@ -126,7 +126,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
                 size="lg"
                 pulse
               />
-              <UnitStatusBadge status={unit.status as 'in_progress' | 'rework'} />
+              <UnitStatusBadge status={unit.status as 'in_progress' | 'rework'} data-testid={`active-unit-status-${unit.id}`} />
             </div>
           </div>
         </div>
@@ -161,7 +161,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
                     )}
                   </div>
                   <div className="text-right">
-                    <p className={`text-3xl font-bold font-mono ${
+                    <p data-testid={`active-unit-elapsed-${unit.id}`} className={`text-3xl font-bold font-mono ${
                       isOverTime ? 'text-amber-600' : 'text-slate-700'
                     }`}>
                       {elapsedMinutes}<span className="text-lg">m</span>
@@ -214,6 +214,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
               {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-3">
                 <Button
+                  data-testid={`active-unit-material-btn-${unit.id}`}
                   variant="outline"
                   size="lg"
                   className="h-16 text-base border-2 border-slate-300 hover:border-slate-400 hover:bg-slate-50"
@@ -224,6 +225,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
                   Record Material
                 </Button>
                 <Button
+                  data-testid={`active-unit-quality-btn-${unit.id}`}
                   variant="outline"
                   size="lg"
                   className="h-16 text-base border-2 border-slate-300 hover:border-slate-400 hover:bg-slate-50"
@@ -238,6 +240,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
               {/* Pass/Fail Buttons */}
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <Button
+                  data-testid={`active-unit-fail-btn-${unit.id}`}
                   size="lg"
                   className="h-24 text-xl font-bold bg-red-600 hover:bg-red-700 shadow-lg"
                   onClick={() => handleComplete('fail')}
@@ -253,6 +256,7 @@ export function ActiveUnit({ unit, stationId, qualityChecks, disabled, bomItems 
                   )}
                 </Button>
                 <Button
+                  data-testid={`active-unit-pass-btn-${unit.id}`}
                   size="lg"
                   className="h-24 text-xl font-bold bg-green-600 hover:bg-green-700 shadow-lg"
                   onClick={() => handleComplete('pass')}

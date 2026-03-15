@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { selectDowntimeReason } from '@/lib/actions/downtime';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 type DowntimeWithDetails = DowntimeInterval & {
   reason: DowntimeReason | null;
@@ -28,8 +29,12 @@ export function DowntimePanel({ downtime, reasons, stationId }: DowntimePanelPro
 
   const handleSelectReason = (reasonId: string) => {
     startTransition(async () => {
-      await selectDowntimeReason(downtime.id, reasonId);
-      router.refresh();
+      try {
+        await selectDowntimeReason(downtime.id, reasonId);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to select reason');
+      }
     });
   };
 
@@ -38,13 +43,13 @@ export function DowntimePanel({ downtime, reasons, stationId }: DowntimePanelPro
   const unplannedReasons = reasons.filter((r) => !r.isPlanned);
 
   return (
-    <Card className="mb-4 border-2 border-yellow-400 bg-yellow-50">
+    <Card className="mb-4 border-2 border-yellow-400 bg-yellow-50" data-testid="downtime-panel">
       <CardHeader className="bg-yellow-400 pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg text-yellow-900">
             Downtime Active
           </CardTitle>
-          <span className="text-2xl font-bold text-yellow-900">
+          <span className="text-2xl font-bold text-yellow-900" data-testid="downtime-elapsed">
             {elapsedMinutes} min
           </span>
         </div>
@@ -58,7 +63,7 @@ export function DowntimePanel({ downtime, reasons, stationId }: DowntimePanelPro
         {downtime.reason ? (
           <div className="rounded-lg bg-white p-4">
             <p className="text-sm text-gray-500">Reason Selected</p>
-            <p className="text-lg font-bold text-gray-900">
+            <p className="text-lg font-bold text-gray-900" data-testid="downtime-selected-reason">
               {downtime.reason.code}: {downtime.reason.description}
             </p>
             <span
@@ -82,6 +87,7 @@ export function DowntimePanel({ downtime, reasons, stationId }: DowntimePanelPro
                   {unplannedReasons.map((reason) => (
                     <Button
                       key={reason.id}
+                      data-testid={`downtime-reason-${reason.id}`}
                       variant="outline"
                       className="h-auto border-red-200 py-3 text-left hover:bg-red-50"
                       onClick={() => handleSelectReason(reason.id)}
@@ -104,6 +110,7 @@ export function DowntimePanel({ downtime, reasons, stationId }: DowntimePanelPro
                   {plannedReasons.map((reason) => (
                     <Button
                       key={reason.id}
+                      data-testid={`downtime-reason-${reason.id}`}
                       variant="outline"
                       className="h-auto border-blue-200 py-3 text-left hover:bg-blue-50"
                       onClick={() => handleSelectReason(reason.id)}

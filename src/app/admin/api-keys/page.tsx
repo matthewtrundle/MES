@@ -1,8 +1,6 @@
 import { listApiKeys } from '@/lib/actions/api-keys';
 import { ApiKeyManager } from '@/components/admin/ApiKeyManager';
 
-export const dynamic = 'force-dynamic';
-
 export default async function ApiKeysPage() {
   const apiKeys = await listApiKeys();
 
@@ -20,9 +18,9 @@ export default async function ApiKeysPage() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">API Keys</h1>
+        <h1 className="text-xl font-semibold text-slate-900">API Keys</h1>
         <p className="text-sm text-slate-600 mt-1">
           Manage API keys for external integrations. Keys use Bearer token authentication
           with the <code className="bg-slate-100 px-1 rounded">Authorization: Bearer mes_...</code> header.

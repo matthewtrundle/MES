@@ -17,20 +17,11 @@ export async function GET(
       return NextResponse.json({ error: 'workOrderId is required' }, { status: 400 });
     }
 
-    // Get the station to find its sequence
-    const station = await prisma.station.findUnique({
-      where: { id: stationId },
-    });
-
-    if (!station) {
-      return NextResponse.json({ error: 'Station not found' }, { status: 404 });
-    }
-
-    // Find the operation for this work order at this station's sequence
+    // Find the operation for this work order at this station
     const operation = await prisma.workOrderOperation.findFirst({
       where: {
         workOrderId,
-        sequence: station.sequenceOrder,
+        stationId,
       },
     });
 

@@ -13,8 +13,6 @@ import { PurchaseOrderDetailActions } from '@/components/admin/PurchaseOrderDeta
 import { DiscrepancyAlert } from '@/components/admin/DiscrepancyAlert';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-
 function getStatusBadge(status: string) {
   switch (status) {
     case 'draft':
@@ -74,7 +72,7 @@ export default async function PurchaseOrderDetailPage({
             <span className="text-slate-400">/</span>
             <span className="text-sm text-slate-500">{po.poNumber}</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">{po.poNumber}</h1>
+          <h1 className="text-xl font-semibold text-slate-900">{po.poNumber}</h1>
           <div className="flex items-center gap-3 mt-1">
             {getStatusBadge(po.status)}
             <span className="text-slate-500">

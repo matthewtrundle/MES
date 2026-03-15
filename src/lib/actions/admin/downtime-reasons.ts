@@ -76,6 +76,7 @@ export async function createDowntimeReason(data: {
 
   revalidatePath('/admin/downtime-reasons');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return reason;
 }
@@ -133,6 +134,7 @@ export async function updateDowntimeReason(
 
   revalidatePath('/admin/downtime-reasons');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 
   return reason;
 }
@@ -180,6 +182,7 @@ export async function deleteDowntimeReason(id: string) {
 
   revalidatePath('/admin/downtime-reasons');
   revalidatePath('/station');
+  revalidatePath('/dashboard');
 }
 
 export async function getSites() {

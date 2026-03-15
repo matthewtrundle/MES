@@ -14,6 +14,7 @@ interface StationHeaderProps {
 export function StationHeader({ station, user, hasActiveDowntime, activeUnitsCount = 0 }: StationHeaderProps) {
   return (
     <header
+      data-testid="station-header"
       className={`sticky top-0 z-10 border-b shadow-md ${
         hasActiveDowntime
           ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 border-amber-600'
@@ -36,7 +37,7 @@ export function StationHeader({ station, user, hasActiveDowntime, activeUnitsCou
               )}
             </div>
             <div>
-              <h1 className={`text-2xl font-bold tracking-tight ${
+              <h1 data-testid="station-header-name" className={`text-2xl font-bold tracking-tight ${
                 hasActiveDowntime ? 'text-amber-900' : 'text-white'
               }`}>
                 {station.name}
@@ -54,7 +55,7 @@ export function StationHeader({ station, user, hasActiveDowntime, activeUnitsCou
             {hasActiveDowntime ? (
               <div className="flex items-center gap-3 rounded-lg bg-amber-600 px-4 py-2 shadow-lg">
                 <StatusIndicator status="downtime" size="lg" pulse />
-                <span className="text-lg font-bold text-white uppercase tracking-wide">
+                <span data-testid="station-header-status" className="text-lg font-bold text-white uppercase tracking-wide">
                   Downtime Active
                 </span>
               </div>
@@ -62,13 +63,13 @@ export function StationHeader({ station, user, hasActiveDowntime, activeUnitsCou
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 rounded-lg bg-slate-600/50 px-4 py-2">
                   <StatusIndicator status={activeUnitsCount > 0 ? 'running' : 'idle'} size="md" pulse={activeUnitsCount > 0} />
-                  <span className="text-white font-medium">
+                  <span data-testid="station-header-status" className="text-white font-medium">
                     {activeUnitsCount > 0 ? 'Active' : 'Ready'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg bg-slate-600/50 px-4 py-2">
                   <Icons.unit className="h-5 w-5 text-blue-400" />
-                  <span className="text-2xl font-bold text-white">{activeUnitsCount}</span>
+                  <span data-testid="station-header-active-units" className="text-2xl font-bold text-white">{activeUnitsCount}</span>
                   <span className="text-slate-300 text-sm">units</span>
                 </div>
               </div>

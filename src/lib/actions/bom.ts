@@ -6,7 +6,7 @@ import { emitEvent, generateUniqueIdempotencyKey } from '@/lib/db/events';
 import { logAuditTrail } from '@/lib/db/audit';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { uuid, positiveNumber } from '@/lib/validation/schemas';
+import { validate, uuid, positiveNumber } from '@/lib/validation/schemas';
 
 const assemblyGroupEnum = z.enum([
   'stator',
@@ -115,7 +115,7 @@ export async function getBomForStation(routingId: string, stationId: string) {
  * Create a BOM item
  */
 export async function createBomItem(data: z.infer<typeof createBomItemSchema>) {
-  const validated = createBomItemSchema.parse(data);
+  const validated = validate(createBomItemSchema, data);
   const user = await requireRole(['admin']);
 
   // Verify routing and station exist
@@ -151,6 +151,7 @@ export async function createBomItem(data: z.infer<typeof createBomItemSchema>) {
   });
 
   revalidatePath('/admin/bom');
+  revalidatePath('/dashboard');
   return item;
 }
 
@@ -158,7 +159,7 @@ export async function createBomItem(data: z.infer<typeof createBomItemSchema>) {
  * Update a BOM item
  */
 export async function updateBomItem(data: z.infer<typeof updateBomItemSchema>) {
-  const validated = updateBomItemSchema.parse(data);
+  const validated = validate(updateBomItemSchema, data);
   const user = await requireRole(['admin']);
 
   const existing = await prisma.billOfMaterial.findUnique({
@@ -185,6 +186,7 @@ export async function updateBomItem(data: z.infer<typeof updateBomItemSchema>) {
   });
 
   revalidatePath('/admin/bom');
+  revalidatePath('/dashboard');
   return item;
 }
 
@@ -216,6 +218,7 @@ export async function deleteBomItem(id: string) {
   });
 
   revalidatePath('/admin/bom');
+  revalidatePath('/dashboard');
 }
 
 /**
@@ -366,6 +369,7 @@ export async function createBomRevision(routingId: string) {
   });
 
   revalidatePath('/admin/bom');
+  revalidatePath('/dashboard');
   return newRouting;
 }
 

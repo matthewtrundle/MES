@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { captureStepData, signOffStep } from '@/lib/actions/step-data';
-import type { DataFieldDefinition } from '@/lib/types/process-steps';
+import { normalizeDataFields, type DataFieldDefinition } from '@/lib/types/process-steps';
 import { useRouter } from 'next/navigation';
 
 interface StepDefinition {
@@ -126,7 +126,7 @@ export function StepDataCapturePanel({
   };
 
   return (
-    <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+    <div className="rounded-xl bg-slate-50 border border-slate-200 p-4" data-testid="step-data-panel">
       <div className="flex items-center gap-2 mb-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
           <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -136,7 +136,7 @@ export function StepDataCapturePanel({
         <span className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
           Data Capture
         </span>
-        <span className="text-xs text-slate-400 ml-auto">
+        <span className="text-xs text-slate-400 ml-auto" data-testid="step-data-progress">
           {existingCaptures.length}/{stepDefinitions.length} completed
         </span>
       </div>
@@ -149,7 +149,7 @@ export function StepDataCapturePanel({
 
       <div className="space-y-2">
         {stepDefinitions.map((step) => {
-          const fields = (step.dataFields ?? []) as DataFieldDefinition[];
+          const fields = normalizeDataFields(step.dataFields);
           const capture = getCaptureForStep(step.id);
           const isExpanded = expandedStepId === step.id;
           const isCaptured = !!capture;
@@ -159,6 +159,7 @@ export function StepDataCapturePanel({
           return (
             <div
               key={step.id}
+              data-testid={`step-row-${step.id}`}
               className={`border rounded-lg bg-white overflow-hidden ${
                 isSignedOff
                   ? 'border-green-300'
@@ -170,6 +171,7 @@ export function StepDataCapturePanel({
               {/* Step header */}
               <button
                 type="button"
+                data-testid={`step-header-${step.id}`}
                 className={`w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-50 ${
                   disabled ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
@@ -181,7 +183,7 @@ export function StepDataCapturePanel({
                 disabled={disabled}
               >
                 {/* Status indicator */}
-                <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                <div data-testid={`step-status-${step.id}`} className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
                   isSignedOff
                     ? 'bg-green-500'
                     : isCaptured
@@ -212,7 +214,7 @@ export function StepDataCapturePanel({
 
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {step.isMandatory && !isCaptured && (
-                    <Badge variant="outline" className="text-xs border-red-300 text-red-600">
+                    <Badge data-testid={`step-required-badge-${step.id}`} variant="outline" className="text-xs border-red-300 text-red-600">
                       Required
                     </Badge>
                   )}
@@ -256,7 +258,7 @@ export function StepDataCapturePanel({
                     const status = getFieldStatus(field, value);
 
                     return (
-                      <div key={field.id} className="space-y-1">
+                      <div key={field.id} data-testid={`step-field-${step.id}-${field.id}`} className="space-y-1">
                         <div className="flex items-center gap-2">
                           <Label className="text-sm">
                             {field.name}
@@ -267,6 +269,7 @@ export function StepDataCapturePanel({
                           )}
                           {status !== 'none' && (
                             <Badge
+                              data-testid={`step-field-status-${step.id}-${field.id}`}
                               className={`text-xs ml-auto ${
                                 status === 'pass' ? 'bg-green-500' : 'bg-red-500'
                               }`}
@@ -360,6 +363,7 @@ export function StepDataCapturePanel({
                   <div className="flex gap-2 pt-2">
                     <Button
                       type="button"
+                      data-testid={`step-save-${step.id}`}
                       onClick={() => handleSaveStep(step.id)}
                       disabled={isPending || isSignedOff || disabled}
                       className="flex-1 h-12"
@@ -369,6 +373,7 @@ export function StepDataCapturePanel({
                     {step.requiresSignoff && isCaptured && !isSignedOff && (
                       <Button
                         type="button"
+                        data-testid={`step-signoff-${step.id}`}
                         variant="outline"
                         onClick={() => handleSignOff(step.id)}
                         disabled={isPending || disabled}

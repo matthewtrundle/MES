@@ -16,6 +16,12 @@ interface KPICardProps {
   status?: 'normal' | 'warning' | 'critical' | 'success';
   className?: string;
   href?: string;
+  size?: 'lg' | 'md' | 'sm';
+  timeBreakdown?: {
+    lastHour: string;
+    today: string;
+    direction: 'up' | 'down' | 'neutral';
+  };
   // Target comparison - shows "value / target" format
   target?: {
     value: number | string;
@@ -33,6 +39,8 @@ export function KPICard({
   status = 'normal',
   className = '',
   href,
+  size = 'md',
+  timeBreakdown,
   target,
 }: KPICardProps) {
   const Icon = Icons[icon] as LucideIcon;
@@ -70,12 +78,45 @@ export function KPICard({
 
   const styles = statusStyles[status];
 
-  const cardContent = (
+  const sizeStyles = {
+    lg: { value: 'text-4xl', padding: 'p-5', icon: 'h-7 w-7', iconWrap: 'p-3' },
+    md: { value: 'text-3xl', padding: 'p-4', icon: 'h-6 w-6', iconWrap: 'p-2.5' },
+    sm: { value: 'text-2xl', padding: 'p-3', icon: 'h-5 w-5', iconWrap: 'p-2' },
+  };
+  const sz = sizeStyles[size];
+
+  const cardContent = size === 'sm' ? (
+    <div className="flex items-center justify-between gap-3">
+      <div className={`rounded-lg ${sz.iconWrap} shadow-sm ${styles.iconBg} flex-shrink-0`}>
+        <Icon className={`${sz.icon} ${styles.iconColor}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">{title}</p>
+        <div className="flex items-baseline gap-2">
+          <span className={`data-readout ${sz.value} ${styles.valueColor}`}>{value}</span>
+          {trend && (
+            <span className={`flex items-center text-xs font-medium ${
+              trend.direction === 'up' ? 'text-green-600' : trend.direction === 'down' ? 'text-red-600' : 'text-slate-500'
+            }`}>
+              {trend.direction === 'up' ? <Icons.trendUp className="mr-0.5 h-3 w-3" /> : trend.direction === 'down' ? <Icons.trendDown className="mr-0.5 h-3 w-3" /> : null}
+              {trend.value}
+            </span>
+          )}
+        </div>
+        {timeBreakdown && (
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            <span className="font-medium">{timeBreakdown.lastHour}</span> last hr · <span className="font-medium">{timeBreakdown.today}</span> today
+          </p>
+        )}
+      </div>
+      {href && <Icons.chevronRight className="h-4 w-4 text-slate-300 flex-shrink-0" />}
+    </div>
+  ) : (
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{title}</p>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className={`data-readout text-3xl ${styles.valueColor}`}>
+            <span className={`data-readout ${sz.value} ${styles.valueColor}`}>
               {value}
             </span>
             {trend && (
@@ -97,6 +138,11 @@ export function KPICard({
               </span>
             )}
           </div>
+          {timeBreakdown && (
+            <p className="text-[10px] text-slate-400 mt-1">
+              <span className="font-medium">{timeBreakdown.lastHour}</span> last hr · <span className="font-medium">{timeBreakdown.today}</span> today
+            </p>
+          )}
           {/* Target comparison - turns numbers into performance signals */}
           {target && (
             <p className="mt-1 text-xs">
@@ -120,8 +166,8 @@ export function KPICard({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <div className={`rounded-xl p-2.5 shadow-sm ${styles.iconBg}`}>
-            <Icon className={`h-6 w-6 ${styles.iconColor}`} />
+          <div className={`rounded-xl ${sz.iconWrap} shadow-sm ${styles.iconBg}`}>
+            <Icon className={`${sz.icon} ${styles.iconColor}`} />
           </div>
           {href && <Icons.chevronRight className="h-5 w-5 text-slate-300" />}
         </div>
@@ -132,7 +178,7 @@ export function KPICard({
     return (
       <Link
         href={href}
-        className={`block industrial-card p-4 transition-all hover:shadow-lg hover:scale-[1.02] ${styles.border} ${className}`}
+        className={`block industrial-card ${sz.padding} transition-all hover:shadow-lg hover:scale-[1.02] ${styles.border} ${className}`}
       >
         {cardContent}
       </Link>
@@ -141,7 +187,7 @@ export function KPICard({
 
   return (
     <div
-      className={`industrial-card p-4 ${styles.border} ${className}`}
+      className={`industrial-card ${sz.padding} ${styles.border} ${className}`}
     >
       {cardContent}
     </div>

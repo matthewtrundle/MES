@@ -25,7 +25,7 @@ export function WorkOrderList({ workOrders, stationId, disabled }: WorkOrderList
 
   return (
     <>
-      <div className="industrial-card">
+      <div className="industrial-card" data-testid="work-order-list">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-3 rounded-t-lg">
           <div className="flex items-center gap-3">
@@ -44,20 +44,23 @@ export function WorkOrderList({ workOrders, stationId, disabled }: WorkOrderList
           {workOrders.length === 0 ? (
             <div className="py-8 text-center">
               <Icons.document className="mx-auto h-10 w-10 text-slate-300" />
-              <p className="mt-3 text-slate-500 font-medium">No work orders</p>
+              <p className="mt-3 text-slate-500 font-medium" data-testid="work-order-list-empty">No work orders</p>
               <p className="text-sm text-slate-400">No orders assigned to this station</p>
             </div>
           ) : (
             <div className="space-y-3">
               {workOrders.map((wo) => {
                 const completedCount = wo.units.filter((u) => u.status === 'completed').length;
-                const remainingCount = wo.qtyOrdered - completedCount;
+                const totalCreated = wo.units.length;
+                const canCreateMore = totalCreated < wo.qtyOrdered;
+                const remainingToCreate = wo.qtyOrdered - totalCreated;
                 const progressPercent = Math.round((completedCount / wo.qtyOrdered) * 100);
                 const isSelected = selectedWO === wo.id;
 
                 return (
                   <div
                     key={wo.id}
+                    data-testid={`work-order-${wo.id}`}
                     className={`cursor-pointer rounded-lg border-2 p-4 transition-all ${
                       isSelected
                         ? 'border-blue-500 bg-blue-50 shadow-md'
@@ -95,7 +98,7 @@ export function WorkOrderList({ workOrders, stationId, disabled }: WorkOrderList
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="text-3xl font-bold text-blue-600">{completedCount}</p>
+                        <p className="text-3xl font-bold text-blue-600" data-testid={`work-order-completed-${wo.id}`}>{completedCount}</p>
                         <p className="text-sm text-slate-500">of {wo.qtyOrdered}</p>
                       </div>
                     </div>
@@ -123,8 +126,8 @@ export function WorkOrderList({ workOrders, stationId, disabled }: WorkOrderList
                     {/* Remaining Count */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-500">Remaining</span>
-                      <span className={`font-bold ${remainingCount > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                        {remainingCount > 0 ? `${remainingCount} units` : 'Complete!'}
+                      <span className={`font-bold ${canCreateMore ? 'text-amber-600' : 'text-green-600'}`}>
+                        {canCreateMore ? `${remainingToCreate} to create` : `${completedCount}/${totalCreated} completed`}
                       </span>
                     </div>
 
@@ -132,15 +135,16 @@ export function WorkOrderList({ workOrders, stationId, disabled }: WorkOrderList
                     {isSelected && (
                       <div className="mt-4 pt-4 border-t border-slate-200">
                         <Button
+                          data-testid={`work-order-start-unit-${wo.id}`}
                           className="w-full h-14 text-lg font-semibold bg-blue-600 hover:bg-blue-700"
-                          disabled={disabled || remainingCount <= 0}
+                          disabled={disabled || !canCreateMore}
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowCreateUnit(true);
                           }}
                         >
                           <Icons.plus className="mr-2 h-5 w-5" />
-                          {remainingCount > 0 ? 'Start New Unit' : 'All Units Created'}
+                          {canCreateMore ? 'Start New Unit' : 'All Units Created'}
                         </Button>
                       </div>
                     )}

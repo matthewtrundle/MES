@@ -1,9 +1,7 @@
 import { requireUser } from '@/lib/auth/rbac';
 import { prisma } from '@/lib/db/prisma';
 import { NotificationList } from '@/components/admin/NotificationList';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
-export const dynamic = 'force-dynamic';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 
 export const revalidate = 30;
 
@@ -25,27 +23,23 @@ export default async function NotificationsPage() {
   ]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
-        <p className="text-slate-500 mt-1">
-          {unreadCount > 0
-            ? `You have ${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`
-            : 'All caught up!'}
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader
+        title="Notifications"
+        subtitle={unreadCount > 0 ? `You have ${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}` : 'All caught up!'}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Notifications</CardTitle>
-          <CardDescription>
-            {totalCount} notification{totalCount !== 1 ? 's' : ''} total
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <NotificationList notifications={notifications} />
-        </CardContent>
-      </Card>
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-900">All Notifications</h3>
+            <p className="text-sm text-slate-500">{totalCount} notification{totalCount !== 1 ? 's' : ''} total</p>
+          </div>
+          <div className="p-4">
+            <NotificationList notifications={notifications} />
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

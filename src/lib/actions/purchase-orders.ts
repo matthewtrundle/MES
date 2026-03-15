@@ -11,6 +11,7 @@ import {
   type CreatePurchaseOrderInput,
   type LineItemInput,
 } from '@/lib/validation/po-schemas';
+import { validate } from '@/lib/validation/schemas';
 
 // ── Get next PO number ────────────────────────────────────────────
 export async function getNextPoNumber(
@@ -41,7 +42,7 @@ export async function getNextPoNumber(
 // ── Create Purchase Order ─────────────────────────────────────────
 export async function createPurchaseOrder(data: CreatePurchaseOrderInput) {
   const user = await requireRole(['admin', 'supervisor']);
-  const validated = createPurchaseOrderSchema.parse(data);
+  const validated = validate(createPurchaseOrderSchema, data);
 
   const poNumber = await getNextPoNumber();
 
@@ -120,6 +121,7 @@ export async function createPurchaseOrder(data: CreatePurchaseOrderInput) {
   }
 
   revalidatePath('/admin/purchase-orders');
+  revalidatePath('/dashboard');
   return purchaseOrder;
 }
 
@@ -225,6 +227,7 @@ export async function updatePurchaseOrderStatus(id: string, newStatus: string) {
 
   revalidatePath('/admin/purchase-orders');
   revalidatePath(`/admin/purchase-orders/${id}`);
+  revalidatePath('/dashboard');
   return po;
 }
 
@@ -278,6 +281,7 @@ export async function submitPurchaseOrder(id: string) {
 
   revalidatePath('/admin/purchase-orders');
   revalidatePath(`/admin/purchase-orders/${id}`);
+  revalidatePath('/dashboard');
   return po;
 }
 
@@ -332,13 +336,14 @@ export async function cancelPurchaseOrder(id: string) {
 
   revalidatePath('/admin/purchase-orders');
   revalidatePath(`/admin/purchase-orders/${id}`);
+  revalidatePath('/dashboard');
   return po;
 }
 
 // ── Add Line Item to Draft PO ─────────────────────────────────────
 export async function addLineItem(poId: string, data: LineItemInput) {
   const user = await requireRole(['admin', 'supervisor']);
-  const validated = addLineItemSchema.parse(data);
+  const validated = validate(addLineItemSchema, data);
 
   const po = await prisma.purchaseOrder.findUnique({
     where: { id: poId },

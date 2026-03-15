@@ -1,11 +1,8 @@
 import { prisma } from '@/lib/db/prisma';
-import Link from 'next/link';
-import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { OEEGauge } from '@/components/supervisor/OEEGauge';
 import { OEESparkline } from '@/components/supervisor/OEESparkline';
-
-export const dynamic = 'force-dynamic';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 
 export const revalidate = 60;
 
@@ -155,40 +152,16 @@ export default async function OEEPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Dashboard</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-blue-100 p-2">
-                  <Icons.gauge className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">OEE Dashboard</h1>
-                  <p className="text-sm text-gray-500">Overall Equipment Effectiveness</p>
-                </div>
-              </div>
-            </div>
-            <AutoRefresh intervalSeconds={30} />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader title="OEE Dashboard" subtitle="Overall Equipment Effectiveness">
+        <AutoRefresh intervalSeconds={30} />
+      </DashboardPageHeader>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Main OEE Gauge */}
-        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-8">
+        <div className="mb-8 rounded-lg border border-slate-200 bg-white p-8">
           <div className="flex flex-col items-center">
-            <h2 className="mb-6 text-lg font-semibold text-gray-700">Overall Equipment Effectiveness</h2>
+            <h2 className="mb-6 text-lg font-semibold text-slate-700">Overall Equipment Effectiveness</h2>
             <OEEGauge
               value={data.oee}
               size="xl"
@@ -196,7 +169,7 @@ export default async function OEEPage() {
               showBenchmark
             />
             <div className="mt-4 flex items-center gap-2">
-              <span className="text-sm text-gray-500">World-Class Target:</span>
+              <span className="text-sm text-slate-500">World-Class Target:</span>
               <span className="font-semibold text-blue-600">85%</span>
             </div>
           </div>
@@ -205,9 +178,9 @@ export default async function OEEPage() {
         {/* Three Component Gauges */}
         <div className="mb-8 grid gap-6 md:grid-cols-3">
           {/* Availability */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6">
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
             <div className="flex flex-col items-center">
-              <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-gray-500">
+              <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-slate-500">
                 Availability
               </h3>
               <OEEGauge
@@ -217,10 +190,10 @@ export default async function OEEPage() {
                 color="blue"
               />
               <div className="mt-4 text-center">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   {data.plannedMinutes - data.downtimeMinutes} min / {data.plannedMinutes} min
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   Downtime: {data.downtimeMinutes} min
                 </p>
               </div>
@@ -233,9 +206,9 @@ export default async function OEEPage() {
           </div>
 
           {/* Performance */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6">
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
             <div className="flex flex-col items-center">
-              <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-gray-500">
+              <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-slate-500">
                 Performance
               </h3>
               <OEEGauge
@@ -245,10 +218,10 @@ export default async function OEEPage() {
                 color="green"
               />
               <div className="mt-4 text-center">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   {data.completedUnits} units / {data.expectedUnits} expected
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   Based on 15 min cycle time
                 </p>
               </div>
@@ -261,9 +234,9 @@ export default async function OEEPage() {
           </div>
 
           {/* Quality */}
-          <div className="rounded-xl border border-gray-200 bg-white p-6">
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
             <div className="flex flex-col items-center">
-              <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-gray-500">
+              <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-slate-500">
                 Quality
               </h3>
               <OEEGauge
@@ -273,10 +246,10 @@ export default async function OEEPage() {
                 color="purple"
               />
               <div className="mt-4 text-center">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   {data.passCount} pass / {data.totalChecks} total
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   First Pass Yield
                 </p>
               </div>
@@ -290,33 +263,33 @@ export default async function OEEPage() {
         </div>
 
         {/* OEE Formula Breakdown */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-gray-500">
+        <div className="rounded-lg border border-slate-200 bg-white p-6">
+          <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-slate-500">
             OEE Calculation
           </h3>
           <div className="flex items-center justify-center gap-4 text-lg">
             <div className="text-center">
               <span className="font-bold text-blue-600">{data.availability}%</span>
-              <p className="text-xs text-gray-400">Availability</p>
+              <p className="text-xs text-slate-400">Availability</p>
             </div>
-            <span className="text-gray-400">×</span>
+            <span className="text-slate-400">×</span>
             <div className="text-center">
               <span className="font-bold text-green-600">{data.performance}%</span>
-              <p className="text-xs text-gray-400">Performance</p>
+              <p className="text-xs text-slate-400">Performance</p>
             </div>
-            <span className="text-gray-400">×</span>
+            <span className="text-slate-400">×</span>
             <div className="text-center">
               <span className="font-bold text-purple-600">{data.quality}%</span>
-              <p className="text-xs text-gray-400">Quality</p>
+              <p className="text-xs text-slate-400">Quality</p>
             </div>
-            <span className="text-gray-400">=</span>
+            <span className="text-slate-400">=</span>
             <div className="text-center">
               <span className={`text-2xl font-black ${
                 data.oee >= 85 ? 'text-green-600' : data.oee >= 70 ? 'text-blue-600' : 'text-amber-600'
               }`}>
                 {data.oee}%
               </span>
-              <p className="text-xs text-gray-400">OEE</p>
+              <p className="text-xs text-slate-400">OEE</p>
             </div>
           </div>
 
@@ -324,19 +297,19 @@ export default async function OEEPage() {
           <div className="mt-6 flex justify-center gap-6 text-xs">
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-green-500" />
-              <span className="text-gray-500">World-Class (≥85%)</span>
+              <span className="text-slate-500">World-Class (≥85%)</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-blue-500" />
-              <span className="text-gray-500">Good (70-84%)</span>
+              <span className="text-slate-500">Good (70-84%)</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-amber-500" />
-              <span className="text-gray-500">Needs Improvement (50-69%)</span>
+              <span className="text-slate-500">Needs Improvement (50-69%)</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-red-500" />
-              <span className="text-gray-500">Critical (&lt;50%)</span>
+              <span className="text-slate-500">Critical (&lt;50%)</span>
             </div>
           </div>
         </div>

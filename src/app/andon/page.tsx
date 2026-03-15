@@ -5,7 +5,7 @@ import { LiveTicker } from '@/components/andon/LiveTicker';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
 import { Icons } from '@/components/icons';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 10;
 
 async function getAndonData() {
   const today = new Date();

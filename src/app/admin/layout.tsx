@@ -11,12 +11,14 @@ export default async function AdminLayout({
   const user = await requireRole(['admin']);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50/80">
       <AdminHeader user={user} />
       <div className="flex">
         <AdminSidebar />
-        <main className="flex-1 p-6">
-          {children}
+        <main className="flex-1 min-w-0 p-4 lg:p-6 lg:px-8">
+          <div className="max-w-6xl">
+            {children}
+          </div>
         </main>
       </div>
     </div>

@@ -1,9 +1,7 @@
 import { prisma } from '@/lib/db/prisma';
-import Link from 'next/link';
-import { Icons, UnitStatusBadge } from '@/components/icons';
+import { UnitStatusBadge } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
-
-export const dynamic = 'force-dynamic';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 
 export const revalidate = 30;
 
@@ -88,51 +86,25 @@ export default async function ProductionPage() {
   const progressPercent = Math.min(100, (data.completedTodayCount / data.target) * 100);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Dashboard</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-green-100 p-2">
-                  <Icons.pass className="h-6 w-6 text-green-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">
-                    Production Output
-                  </h1>
-                  <p className="text-sm text-gray-500">Today&apos;s completed units</p>
-                </div>
-              </div>
-            </div>
-            <AutoRefresh intervalSeconds={15} />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader title="Production Output" subtitle="Today's completed units">
+        <AutoRefresh intervalSeconds={15} />
+      </DashboardPageHeader>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Progress to Target */}
-        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+        <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Daily Progress</h2>
-              <p className="text-sm text-gray-500">Target: {data.target} units</p>
+              <h2 className="text-lg font-semibold text-slate-900">Daily Progress</h2>
+              <p className="text-sm text-slate-500">Target: {data.target} units</p>
             </div>
             <div className="text-right">
               <p className="text-4xl font-bold text-green-600">{data.completedTodayCount}</p>
-              <p className="text-sm text-gray-500">completed</p>
+              <p className="text-sm text-slate-500">completed</p>
             </div>
           </div>
-          <div className="h-4 overflow-hidden rounded-full bg-gray-200">
+          <div className="h-4 overflow-hidden rounded-full bg-slate-200">
             <div
               className={`h-full transition-all ${
                 progressPercent >= 100 ? 'bg-green-500' : 'bg-blue-500'
@@ -140,7 +112,7 @@ export default async function ProductionPage() {
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <p className="mt-2 text-sm text-gray-600 text-center">
+          <p className="mt-2 text-sm text-slate-600 text-center">
             {progressPercent >= 100
               ? 'Target achieved!'
               : `${data.target - data.completedTodayCount} more to reach target`}
@@ -148,8 +120,8 @@ export default async function ProductionPage() {
         </div>
 
         {/* Hourly Breakdown Chart */}
-        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Hourly Output</h2>
+        <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Hourly Output</h2>
           <div className="flex items-end gap-2 h-32">
             {data.hourlyStats.map((stat) => {
               const maxCount = Math.max(...data.hourlyStats.map((s) => s.count), 1);
@@ -158,11 +130,11 @@ export default async function ProductionPage() {
                 <div key={stat.hour} className="flex-1 flex flex-col items-center">
                   <div
                     className={`w-full rounded-t ${
-                      stat.count > 0 ? 'bg-green-500' : 'bg-gray-200'
+                      stat.count > 0 ? 'bg-green-500' : 'bg-slate-200'
                     }`}
                     style={{ height: `${Math.max(height, 4)}%` }}
                   />
-                  <span className="text-xs text-gray-500 mt-1">
+                  <span className="text-xs text-slate-500 mt-1">
                     {stat.hour.toString().padStart(2, '0')}
                   </span>
                 </div>
@@ -173,18 +145,17 @@ export default async function ProductionPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Completed Units List */}
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <h3 className="font-semibold text-gray-900">
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <h3 className="font-semibold text-slate-900">
                 Completed Today ({data.completedUnitsToday.length})
               </h3>
             </div>
-            <div className="max-h-96 divide-y divide-gray-100 overflow-y-auto">
+            <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
               {data.completedUnitsToday.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500">
-                  <Icons.unit className="mx-auto h-8 w-8 text-gray-300" />
+                <div className="px-4 py-8 text-center text-slate-500">
                   <p className="mt-2">No units completed yet today</p>
-                  <p className="text-xs text-gray-400">Start the simulation to see production</p>
+                  <p className="text-xs text-slate-400">Start the simulation to see production</p>
                 </div>
               ) : (
                 data.completedUnitsToday.map((unit) => (
@@ -193,16 +164,16 @@ export default async function ProductionPage() {
                     className="flex items-center justify-between px-4 py-3"
                   >
                     <div>
-                      <p className="font-mono font-medium text-gray-900">
+                      <p className="font-mono font-medium text-slate-900">
                         {unit.serialNumber}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-slate-500">
                         {unit.workOrder.productCode}
                       </p>
                     </div>
                     <div className="text-right">
                       <UnitStatusBadge status="completed" />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-slate-500 mt-1">
                         {new Date(unit.updatedAt).toLocaleTimeString()}
                       </p>
                     </div>
@@ -213,25 +184,25 @@ export default async function ProductionPage() {
           </div>
 
           {/* Work Order Progress */}
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <h3 className="font-semibold text-gray-900">Work Order Status</h3>
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <h3 className="font-semibold text-slate-900">Work Order Status</h3>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-slate-100">
               {data.workOrders.map((wo) => {
                 const progress = Math.round((wo.qtyCompleted / wo.qtyOrdered) * 100);
                 return (
                   <div key={wo.id} className="px-4 py-3">
                     <div className="flex items-center justify-between mb-2">
                       <div>
-                        <p className="font-medium text-gray-900">{wo.orderNumber}</p>
-                        <p className="text-sm text-gray-500">{wo.productName}</p>
+                        <p className="font-medium text-slate-900">{wo.orderNumber}</p>
+                        <p className="text-sm text-slate-500">{wo.productName}</p>
                       </div>
-                      <span className="text-sm font-medium text-gray-600">
+                      <span className="text-sm font-medium text-slate-600">
                         {wo.qtyCompleted} / {wo.qtyOrdered}
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-200">
                       <div
                         className="h-full bg-blue-500"
                         style={{ width: `${progress}%` }}

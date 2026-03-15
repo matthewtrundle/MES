@@ -276,6 +276,7 @@ export async function importPurchaseOrdersFromCSV(
   }
 
   revalidatePath('/admin/purchase-orders');
+  revalidatePath('/dashboard');
   return { created: createdCount, errors: [] };
 }
 

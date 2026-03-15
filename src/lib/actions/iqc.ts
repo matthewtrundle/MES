@@ -11,6 +11,7 @@ import {
   approveUAISchema,
   startInspectionSchema,
 } from '@/lib/validation/iqc-schemas';
+import { validate } from '@/lib/validation/schemas';
 
 // =============================================================================
 // QUERY ACTIONS
@@ -211,7 +212,7 @@ export async function getInspectionById(inspectionId: string) {
  * Start an inspection - set status to in_progress and assign inspector
  */
 export async function startInspection(inspectionId: string) {
-  startInspectionSchema.parse({ inspectionId });
+  validate(startInspectionSchema, { inspectionId });
   const user = await requireRole(['admin', 'supervisor']);
 
   const inspection = await prisma.incomingInspection.findUnique({
@@ -258,6 +259,7 @@ export async function startInspection(inspectionId: string) {
   });
 
   revalidatePath('/admin/iqc');
+  revalidatePath('/dashboard');
   return updated;
 }
 
@@ -272,7 +274,7 @@ export async function recordMeasurement(data: {
   measuredValue: number;
   notes?: string;
 }) {
-  recordMeasurementSchema.parse(data);
+  validate(recordMeasurementSchema, data);
   const user = await requireRole(['admin', 'supervisor']);
 
   // Verify inspection exists and is in_progress
@@ -338,6 +340,7 @@ export async function recordMeasurement(data: {
   }
 
   revalidatePath('/admin/iqc');
+  revalidatePath('/dashboard');
   return { ...measurement, ctq };
 }
 
@@ -345,7 +348,7 @@ export async function recordMeasurement(data: {
  * Disposition as conforming - lot becomes available
  */
 export async function dispositionConforming(inspectionId: string, notes?: string) {
-  dispositionConformingSchema.parse({ inspectionId, notes });
+  validate(dispositionConformingSchema, { inspectionId, notes });
   const user = await requireRole(['admin', 'supervisor']);
 
   const inspection = await prisma.incomingInspection.findUnique({
@@ -413,6 +416,7 @@ export async function dispositionConforming(inspectionId: string, notes?: string
   });
 
   revalidatePath('/admin/iqc');
+  revalidatePath('/dashboard');
   return { success: true };
 }
 
@@ -431,7 +435,7 @@ export async function dispositionNonconforming(
     actionDueDate?: Date;
   }
 ) {
-  dispositionNonconformingSchema.parse({
+  validate(dispositionNonconformingSchema, {
     inspectionId,
     type,
     ...data,
@@ -553,6 +557,7 @@ export async function dispositionNonconforming(
   }
 
   revalidatePath('/admin/iqc');
+  revalidatePath('/dashboard');
   return { success: true, ncrNumber };
 }
 
@@ -560,7 +565,7 @@ export async function dispositionNonconforming(
  * Approve Use-As-Is disposition - engineer sign-off, releases lot to available
  */
 export async function approveUAI(inspectionId: string, approverNotes?: string) {
-  approveUAISchema.parse({ inspectionId, approverNotes });
+  validate(approveUAISchema, { inspectionId, approverNotes });
   const user = await requireRole(['admin', 'supervisor']);
 
   const inspection = await prisma.incomingInspection.findUnique({
@@ -634,6 +639,7 @@ export async function approveUAI(inspectionId: string, approverNotes?: string) {
   });
 
   revalidatePath('/admin/iqc');
+  revalidatePath('/dashboard');
   return { success: true };
 }
 

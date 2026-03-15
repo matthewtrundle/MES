@@ -1,205 +1,206 @@
 import { prisma } from '@/lib/db/prisma';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-
-export const dynamic = 'force-dynamic';
+import {
+  Factory,
+  ClipboardCheck,
+  Clock,
+  ListOrdered,
+  FileText,
+  ShieldCheck,
+  Target,
+  TestTube2,
+  ClipboardList,
+  Package,
+  Truck,
+  ShoppingCart,
+  PackageOpen,
+  Boxes,
+  Send,
+  Users,
+  ScrollText,
+  Key,
+  Webhook,
+  Download,
+  BookOpen,
+  ChevronRight,
+  Activity,
+} from 'lucide-react';
 
 async function getAdminStats() {
   const [
     stationCount,
-    downtimeReasonCount,
-    qualityCheckCount,
-    processStepCount,
     activeWorkOrders,
     totalUnits,
     openNCRs,
+    supplierCount,
+    partCount,
+    recentAudit,
   ] = await Promise.all([
     prisma.station.count({ where: { active: true } }),
-    prisma.downtimeReason.count({ where: { active: true } }),
-    prisma.qualityCheckDefinition.count({ where: { active: true } }),
-    prisma.processStepDefinition.count({ where: { active: true } }),
     prisma.workOrder.count({ where: { status: { in: ['released', 'in_progress'] } } }),
     prisma.unit.count(),
     prisma.nonconformanceRecord.count({ where: { status: 'open' } }),
+    prisma.supplier.count(),
+    prisma.partMaster.count(),
+    prisma.event.findMany({
+      where: { eventType: { startsWith: 'config_' } },
+      orderBy: { timestampUtc: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        eventType: true,
+        timestampUtc: true,
+        operatorId: true,
+        source: true,
+      },
+    }),
   ]);
 
-  return {
-    stationCount,
-    downtimeReasonCount,
-    qualityCheckCount,
-    processStepCount,
-    activeWorkOrders,
-    totalUnits,
-    openNCRs,
-  };
+  return { stationCount, activeWorkOrders, totalUnits, openNCRs, supplierCount, partCount, recentAudit };
 }
 
 export default async function AdminOverviewPage() {
   const stats = await getAdminStats();
 
-  const configCards = [
+  const sections = [
     {
-      title: 'Stations',
-      description: 'Manage production stations and routing',
-      count: stats.stationCount,
-      href: '/admin/stations',
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      ),
-      color: 'bg-blue-500',
+      title: 'Production',
+      color: 'bg-blue-600',
+      items: [
+        { title: 'Work Orders', href: '/admin/work-orders', Icon: FileText },
+        { title: 'Stations', href: '/admin/stations', Icon: Factory, count: stats.stationCount },
+        { title: 'Routings / BOM', href: '/admin/bom', Icon: ListOrdered },
+        { title: 'Process Steps', href: '/admin/process-steps', Icon: ClipboardList },
+      ],
     },
     {
-      title: 'Downtime Reasons',
-      description: 'Configure downtime categories and loss types',
-      count: stats.downtimeReasonCount,
-      href: '/admin/downtime-reasons',
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      color: 'bg-amber-500',
+      title: 'Quality',
+      color: 'bg-green-600',
+      items: [
+        { title: 'Quality Checks', href: '/admin/quality-checks', Icon: ClipboardCheck },
+        { title: 'CTQ Definitions', href: '/admin/ctq', Icon: Target },
+        { title: 'EOL Tests', href: '/admin/eol-tests', Icon: TestTube2 },
+        { title: 'IQC', href: '/admin/iqc', Icon: ShieldCheck },
+      ],
     },
     {
-      title: 'Quality Checks',
-      description: 'Define quality check procedures and criteria',
-      count: stats.qualityCheckCount,
-      href: '/admin/quality-checks',
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      color: 'bg-green-500',
+      title: 'Supply Chain',
+      color: 'bg-amber-600',
+      items: [
+        { title: 'Parts', href: '/admin/parts', Icon: Boxes },
+        { title: 'Suppliers', href: '/admin/suppliers', Icon: Truck, count: stats.supplierCount },
+        { title: 'Purchase Orders', href: '/admin/purchase-orders', Icon: ShoppingCart },
+        { title: 'Receiving', href: '/admin/receiving', Icon: PackageOpen },
+        { title: 'Kitting', href: '/admin/kitting', Icon: Package },
+        { title: 'Shipping', href: '/admin/shipping', Icon: Send },
+      ],
     },
     {
-      title: 'Process Steps',
-      description: 'Configure per-step data capture fields',
-      count: stats.processStepCount,
-      href: '/admin/process-steps',
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      ),
-      color: 'bg-indigo-500',
+      title: 'System',
+      color: 'bg-purple-600',
+      items: [
+        { title: 'Users', href: '/admin/users', Icon: Users },
+        { title: 'Downtime Reasons', href: '/admin/downtime-reasons', Icon: Clock },
+        { title: 'Audit Log', href: '/admin/audit-log', Icon: ScrollText },
+        { title: 'API Keys', href: '/admin/api-keys', Icon: Key },
+        { title: 'Webhooks', href: '/admin/webhooks', Icon: Webhook },
+        { title: 'Exports', href: '/admin/exports', Icon: Download },
+        { title: 'API Docs', href: '/admin/api-docs', Icon: BookOpen },
+      ],
     },
   ];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-        <p className="text-slate-500 mt-1">Manage MES configuration and settings</p>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">System Administration</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Manage MES configuration and settings</p>
+        </div>
+        <div className="flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-3 py-1">
+          <Activity className="h-3.5 w-3.5 text-green-600" />
+          <span className="text-xs font-medium text-green-700">System Healthy</span>
+        </div>
       </div>
 
-      {/* System Status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Active Work Orders</CardDescription>
-            <CardTitle className="text-3xl">{stats.activeWorkOrders}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Units</CardDescription>
-            <CardTitle className="text-3xl">{stats.totalUnits}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Open NCRs</CardDescription>
-            <CardTitle className="text-3xl text-red-600">{stats.openNCRs}</CardTitle>
-          </CardHeader>
-        </Card>
+      {/* Inline Stats */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <div>
+          <span className="text-slate-500">Active WOs</span>
+          <span className="ml-1.5 font-semibold text-blue-600">{stats.activeWorkOrders}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Units</span>
+          <span className="ml-1.5 font-semibold text-green-600">{stats.totalUnits}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Open NCRs</span>
+          <span className="ml-1.5 font-semibold text-red-600">{stats.openNCRs}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Suppliers</span>
+          <span className="ml-1.5 font-semibold text-amber-600">{stats.supplierCount}</span>
+        </div>
+        <div>
+          <span className="text-slate-500">Parts</span>
+          <span className="ml-1.5 font-semibold text-purple-600">{stats.partCount}</span>
+        </div>
       </div>
 
-      {/* Configuration Cards */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Configuration</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {configCards.map((card) => (
-            <Link key={card.href} href={card.href}>
-              <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className={`${card.color} p-3 rounded-lg text-white`}>
-                      {card.icon}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{card.title}</CardTitle>
-                      <CardDescription className="text-2xl font-bold text-slate-900">
-                        {card.count}
-                      </CardDescription>
-                    </div>
+      {/* Categorized Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {sections.map((section) => (
+          <div key={section.title} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+            <div className={`category-bar ${section.color}`}>
+              {section.title}
+            </div>
+            <div className="divide-y divide-slate-100">
+              {section.items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <item.Icon className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                    <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
+                      {item.title}
+                    </span>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-500">{card.description}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                  <div className="flex items-center gap-2">
+                    {item.count !== undefined && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        {item.count}
+                      </span>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
-        <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-200">
-          <Link
-            href="/admin/stations"
-            className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-slate-400">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </span>
-              <span className="font-medium text-slate-900">Add New Station</span>
-            </div>
-            <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-          <Link
-            href="/admin/downtime-reasons"
-            className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-slate-400">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </span>
-              <span className="font-medium text-slate-900">Add Downtime Reason</span>
-            </div>
-            <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-          <Link
-            href="/admin/quality-checks"
-            className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-slate-400">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </span>
-              <span className="font-medium text-slate-900">Add Quality Check</span>
-            </div>
-            <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
+      {/* Recent Activity */}
+      {stats.recentAudit.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium text-slate-700 mb-2">Recent Config Changes</h2>
+          <div className="border border-slate-200 rounded-lg bg-white divide-y divide-slate-100">
+            {stats.recentAudit.map((event) => (
+              <div key={event.id} className="px-4 py-2.5 flex items-center justify-between text-sm">
+                <span className="text-slate-700 font-medium">
+                  {event.eventType.replace(/_/g, ' ')}
+                </span>
+                <span className="text-xs text-slate-400">
+                  {new Date(event.timestampUtc).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

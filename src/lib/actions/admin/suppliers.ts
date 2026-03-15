@@ -100,6 +100,7 @@ export async function createSupplier(data: {
   }
 
   revalidatePath('/admin/suppliers');
+  revalidatePath('/dashboard');
 
   return supplier;
 }
@@ -153,6 +154,7 @@ export async function updateSupplier(
   }
 
   revalidatePath('/admin/suppliers');
+  revalidatePath('/dashboard');
 
   return supplier;
 }

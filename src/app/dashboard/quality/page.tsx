@@ -2,13 +2,12 @@ import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { AutoRefresh } from '@/components/supervisor/AutoRefresh';
+import { DashboardPageHeader } from '@/components/dashboard/DashboardPageHeader';
 import nextDynamic from 'next/dynamic';
-
-export const dynamic = 'force-dynamic';
 
 const FPYTrendChart = nextDynamic(
   () => import('@/components/supervisor/FPYTrendChart').then(mod => mod.FPYTrendChart),
-  { loading: () => <div className="h-[250px] animate-pulse rounded bg-gray-100" /> }
+  { loading: () => <div className="h-[250px] animate-pulse rounded bg-slate-100" /> }
 );
 import { FPYStationCards } from '@/components/supervisor/FPYStationCards';
 
@@ -186,40 +185,16 @@ export default async function QualityPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-              >
-                <Icons.chevronLeft className="h-5 w-5" />
-                <span>Dashboard</span>
-              </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-blue-100 p-2">
-                  <Icons.gauge className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Quality Metrics</h1>
-                  <p className="text-sm text-gray-500">Quality check results, FPY, and trends</p>
-                </div>
-              </div>
-            </div>
-            <AutoRefresh intervalSeconds={15} />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/80">
+      <DashboardPageHeader title="Quality Metrics" subtitle="Quality check results, FPY, and trends">
+        <AutoRefresh intervalSeconds={15} />
+      </DashboardPageHeader>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Quality Summary Cards */}
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <p className="text-sm text-gray-500">Quality Rate</p>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Quality Rate</p>
             <p
               className={`text-4xl font-bold ${
                 data.qualityRate < 95 ? 'text-amber-600' : 'text-green-600'
@@ -228,18 +203,18 @@ export default async function QualityPage() {
               {data.qualityRate}%
             </p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <p className="text-sm text-gray-500">Total Checks</p>
-            <p className="text-4xl font-bold text-gray-900">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Total Checks</p>
+            <p className="text-4xl font-bold text-slate-900">
               {data.passCount + data.failCount}
             </p>
           </div>
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="text-sm text-green-700">Passed</p>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Passed</p>
             <p className="text-4xl font-bold text-green-600">{data.passCount}</p>
           </div>
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">Failed</p>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-sm text-slate-500">Failed</p>
             <p className="text-4xl font-bold text-red-600">{data.failCount}</p>
           </div>
         </div>
@@ -248,11 +223,11 @@ export default async function QualityPage() {
         {fpyData && (
           <>
             {/* FPY Summary */}
-            <div className="mb-6 rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
+            <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">First-Pass Yield (FPY)</h2>
-                  <p className="text-sm text-gray-500">
+                  <h2 className="text-lg font-semibold text-slate-900">First-Pass Yield (FPY)</h2>
+                  <p className="text-sm text-slate-500">
                     Units passing first time without rework
                   </p>
                 </div>
@@ -268,7 +243,7 @@ export default async function QualityPage() {
                   >
                     {fpyData.overallFPY}%
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-slate-500">
                     {fpyData.totalFirstPassCount} of {fpyData.totalFirstAttempts} first attempts
                   </p>
                 </div>
@@ -276,14 +251,14 @@ export default async function QualityPage() {
             </div>
 
             {/* FPY Trend Chart */}
-            <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-              <h3 className="mb-4 font-semibold text-gray-900">FPY Trend (Last 7 Days)</h3>
+            <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+              <h3 className="mb-4 font-semibold text-slate-900">FPY Trend (Last 7 Days)</h3>
               <FPYTrendChart data={fpyData.trendPoints} height={250} />
             </div>
 
             {/* FPY by Station */}
-            <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-              <h3 className="mb-4 font-semibold text-gray-900">FPY by Station</h3>
+            <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+              <h3 className="mb-4 font-semibold text-slate-900">FPY by Station</h3>
               <FPYStationCards stations={fpyData.stationFPYData} />
             </div>
           </>
@@ -291,14 +266,14 @@ export default async function QualityPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Check Type Breakdown */}
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <h3 className="font-semibold text-gray-900">Quality Checks by Type</h3>
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <h3 className="font-semibold text-slate-900">Quality Checks by Type</h3>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-slate-100">
               {data.checkStats.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500">
-                  <Icons.gauge className="mx-auto h-8 w-8 text-gray-300" />
+                <div className="px-4 py-8 text-center text-slate-500">
+                  <Icons.gauge className="mx-auto h-8 w-8 text-slate-300" />
                   <p className="mt-2">No quality checks recorded today</p>
                 </div>
               ) : (
@@ -306,8 +281,8 @@ export default async function QualityPage() {
                   <div key={check.id} className="px-4 py-3">
                     <div className="flex items-center justify-between mb-2">
                       <div>
-                        <p className="font-medium text-gray-900">{check.name}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="font-medium text-slate-900">{check.name}</p>
+                        <p className="text-sm text-slate-500">
                           {check.station} - {check.checkType}
                         </p>
                       </div>
@@ -319,12 +294,12 @@ export default async function QualityPage() {
                         >
                           {check.rate}%
                         </span>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-slate-500">
                           {check.passes} pass / {check.fails} fail
                         </p>
                       </div>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-200">
                       <div
                         className={`h-full ${
                           check.rate < 90 ? 'bg-red-500' : 'bg-green-500'
@@ -339,14 +314,14 @@ export default async function QualityPage() {
           </div>
 
           {/* Recent Quality Events */}
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-              <h3 className="font-semibold text-gray-900">Recent Quality Events</h3>
+          <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <h3 className="font-semibold text-slate-900">Recent Quality Events</h3>
             </div>
-            <div className="max-h-96 divide-y divide-gray-100 overflow-y-auto">
+            <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
               {data.qualityResults.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500">
-                  <Icons.search className="mx-auto h-8 w-8 text-gray-300" />
+                <div className="px-4 py-8 text-center text-slate-500">
+                  <Icons.search className="mx-auto h-8 w-8 text-slate-300" />
                   <p className="mt-2">No quality checks recorded today</p>
                 </div>
               ) : (
@@ -368,10 +343,10 @@ export default async function QualityPage() {
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-slate-900">
                           {result.unit.serialNumber}
                         </p>
-                        <p className="text-sm text-gray-500">{result.definition.name}</p>
+                        <p className="text-sm text-slate-500">{result.definition.name}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -384,7 +359,7 @@ export default async function QualityPage() {
                       >
                         {result.result}
                       </span>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-slate-500 mt-1">
                         {new Date(result.timestamp).toLocaleTimeString()}
                       </p>
                     </div>
@@ -395,9 +370,9 @@ export default async function QualityPage() {
           </div>
 
           {/* NCRs Created Today */}
-          <div className="rounded-lg border border-gray-200 bg-white lg:col-span-2">
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">
+          <div className="rounded-lg border border-slate-200 bg-white lg:col-span-2">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900">
                 NCRs Created Today ({data.ncrs.length})
               </h3>
               <Link
@@ -407,9 +382,9 @@ export default async function QualityPage() {
                 View All NCRs
               </Link>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-slate-100">
               {data.ncrs.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500">
+                <div className="px-4 py-8 text-center text-slate-500">
                   <Icons.pass className="mx-auto h-8 w-8 text-green-300" />
                   <p className="mt-2 text-green-600">No NCRs today - great quality!</p>
                 </div>
@@ -420,10 +395,10 @@ export default async function QualityPage() {
                     className="flex items-center justify-between px-4 py-3"
                   >
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-slate-900">
                         {ncr.unit?.serialNumber ?? 'IQC NCR'}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-slate-500">
                         {ncr.defectType} at {ncr.station?.name}
                       </p>
                     </div>

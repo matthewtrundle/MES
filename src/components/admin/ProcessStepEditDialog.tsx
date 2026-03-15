@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { updateProcessStepDefinition } from '@/lib/actions/admin/process-steps';
-import { STEP_CATEGORIES, type DataFieldDefinition } from '@/lib/types/process-steps';
+import { STEP_CATEGORIES, normalizeDataFields, type DataFieldDefinition } from '@/lib/types/process-steps';
 import { DataFieldBuilder } from './DataFieldBuilder';
 
 type StepDefinition = {
@@ -72,7 +72,7 @@ export function ProcessStepEditDialog({
     step.cycleTimeTarget?.toString() ?? ''
   );
   const [dataFields, setDataFields] = useState<DataFieldDefinition[]>(
-    (step.dataFields ?? []) as DataFieldDefinition[]
+    normalizeDataFields(step.dataFields)
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
